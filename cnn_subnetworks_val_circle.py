@@ -187,7 +187,8 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
     
     # experiment; channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
     # global channel_weights
-    channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
+    # channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
+    channel_weights = functional_node_strength['gamma']
     channel_weights = np.mean(np.mean(channel_weights, axis=0), axis=0)
     k = int(len(channel_weights) * selection_rate)
     channel_selected = np.argsort(channel_weights)[-k:][::-1]
@@ -218,11 +219,11 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
             # RCM
             residual_type = filtering_type.get('residual_type')
             lateral_mode = filtering_type.get('lateral_mode', 'bilateral')
-            alpha_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(alpha, projection_params, 
+            alpha_rebuilded = alpha + spatial_gaussian_smoothing.fcs_residual_filtering(alpha, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
-            beta_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(beta, projection_params, 
+            beta_rebuilded = beta + spatial_gaussian_smoothing.fcs_residual_filtering(beta, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
-            gamma_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(gamma, projection_params, 
+            gamma_rebuilded = gamma + spatial_gaussian_smoothing.fcs_residual_filtering(gamma, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
             
             # subnetworks
@@ -261,8 +262,8 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
     return df_results
 
 def cnn_subnetworks_eval_circle_rcm_intergrated(projection_params, filtering_params, selection_rate, feature_cm, save=False):
-    residual_list = list(['origin', 'origin_gaussian']) #, 'inverse', 'residual_mean'])
-    residual_list = list(['inverse', 'residual_mean'])
+    residual_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean'])
+    # residual_list = list(['inverse', 'residual_mean'])
     
     results_fitting = {}
     for trail in range(0, len(residual_list)):
