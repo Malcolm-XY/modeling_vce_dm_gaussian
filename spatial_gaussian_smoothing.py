@@ -148,7 +148,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
 
     sigma = params.get('sigma')
     gamma = params.get('gamma', 0.25)
-    lambda_reg = params.get('lambda_reg', 1e-6)
+    lambda_reg = params.get('lambda_reg', 1e-3)
 
     if sigma is None:
         sigma = np.mean(distance_matrix[distance_matrix > 0])
@@ -188,6 +188,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
         try:
             residual_kernel = np.linalg.inv(G.T @ G + lambda_reg * I) @ G.T
         except np.linalg.LinAlgError:
+            print('LinAlgError')
             residual_kernel = np.linalg.pinv(G)
 
     elif residual_type == 'wiener':
@@ -223,7 +224,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
 def fcs_residual_filtering(fcs,
                            projection_params={"source": "auto", "type": "3d"},
                            residual_type='residual', lateral_mode='bilateral',
-                           filtering_params={'sigma': None, 'gamma': 0.25, 'lambda_reg': 1e-3},
+                           filtering_params={'sigma': None, 'gamma': 0.25, 'lambda_reg': 0.25},
                            visualize=False):
     """
     Applies spatial residual filtering to a list/array of functional connectivity matrices (FCs),
@@ -309,7 +310,7 @@ if __name__ == '__main__':
     # utils_visualization.draw_projection(cm_gamma_smoothed_average)
     
     projection_params = {"source": "auto", "type": "3d"}
-    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 1e-3}
+    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 1}
     
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='origin', lateral_mode='bilateral', 
@@ -325,6 +326,16 @@ if __name__ == '__main__':
     
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='residual_mean', lateral_mode='bilateral', 
+                                                        filtering_params=filtering_params, visualize=True)
+    
+    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.25}
+    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
+                                                        residual_type='pseudoinverse', lateral_mode='bilateral', 
+                                                        filtering_params=filtering_params, visualize=True)
+    
+    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.5}
+    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
+                                                        residual_type='pseudoinverse', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
     
     # %% Channel Feature

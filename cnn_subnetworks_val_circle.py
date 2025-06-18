@@ -252,9 +252,11 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
     
     # Save
     if save:
-        folder_name = 'results_cnn_subnetwork_evaluation'
-        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{projection_params.get('type')}prj.xlsx'
+        prj_type = projection_params.get('type')
         residual_type = filtering_type.get('residual_type')
+        
+        folder_name = 'results_cnn_subnetwork_evaluation'
+        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{prj_type}_prj_{residual_type}_kernel.xlsx'
         sheet_name = f'{residual_type}_sr_{selection_rate}'
         
         save_to_xlsx_sheet(df_results, folder_name, file_name, sheet_name)
@@ -262,8 +264,8 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
     return df_results
 
 def cnn_subnetworks_eval_circle_rcm_intergrated(projection_params, filtering_params, selection_rate, feature_cm, save=False):
-    residual_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean'])
-    # residual_list = list(['inverse', 'residual_mean'])
+    # residual_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
+    residual_list = list(['pseudoinverse'])
     
     results_fitting = {}
     for trail in range(0, len(residual_list)):
@@ -338,7 +340,7 @@ if __name__ == '__main__':
         # cnn_subnetworks_evaluation_circle_control_2(selection_rate=selection_rate, feature_cm='pcc', save=True)
 
         cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d"},
-                                                    filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 1e-3},
+                                                    filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)        
         
     # %% End
