@@ -219,11 +219,11 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
             # RCM
             residual_type = filtering_type.get('residual_type')
             lateral_mode = filtering_type.get('lateral_mode', 'bilateral')
-            alpha_rebuilded = alpha + spatial_gaussian_smoothing.fcs_residual_filtering(alpha, projection_params, 
+            alpha_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(alpha, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
-            beta_rebuilded = beta + spatial_gaussian_smoothing.fcs_residual_filtering(beta, projection_params, 
+            beta_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(beta, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
-            gamma_rebuilded = gamma + spatial_gaussian_smoothing.fcs_residual_filtering(gamma, projection_params, 
+            gamma_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(gamma, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
             
             # subnetworks
@@ -338,14 +338,14 @@ if __name__ == '__main__':
         # cnn_subnetworks_evaluation_circle_control_1(argument='data_driven_pcc_10_15', selection_rate=selection_rate, feature_cm='pcc', save=True)
         # cnn_subnetworks_evaluation_circle_control_2(selection_rate=selection_rate, feature_cm='pcc', save=True)
 
-        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "2d"},
-                                                    filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
-                                                    selection_rate=selection_rate, feature_cm='pcc', save=True)
+        # cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d"},
+        #                                             filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
+        #                                             selection_rate=selection_rate, feature_cm='pcc', save=True)
         
-        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "euclidean"},
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "manual", "type": "2d"},
                                                     filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
         
     # %% End
     from cnn_val_circle import end_program_actions
-    end_program_actions(play_sound=True, shutdown=True, countdown_seconds=120)
+    end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)

@@ -212,7 +212,10 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
         filtered_matrix = residual_kernel @ matrix
     else:
         raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
-
+    
+    # Step 4: Reinforce
+    filtered_matrix += matrix
+    
     if visualize:
         try:
             utils_visualization.draw_projection(filtered_matrix, 'After Spatial Filtering')
