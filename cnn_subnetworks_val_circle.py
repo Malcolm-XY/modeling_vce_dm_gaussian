@@ -264,8 +264,7 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
     return df_results
 
 def cnn_subnetworks_eval_circle_rcm_intergrated(projection_params, filtering_params, selection_rate, feature_cm, save=False):
-    # residual_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
-    residual_list = list(['pseudoinverse'])
+    residual_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
     
     results_fitting = {}
     for trail in range(0, len(residual_list)):
@@ -339,9 +338,13 @@ if __name__ == '__main__':
         # cnn_subnetworks_evaluation_circle_control_1(argument='data_driven_pcc_10_15', selection_rate=selection_rate, feature_cm='pcc', save=True)
         # cnn_subnetworks_evaluation_circle_control_2(selection_rate=selection_rate, feature_cm='pcc', save=True)
 
-        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d"},
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "2d"},
                                                     filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
-                                                    selection_rate=selection_rate, feature_cm='pcc', save=True)        
+                                                    selection_rate=selection_rate, feature_cm='pcc', save=True)
+        
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "euclidean"},
+                                                    filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
+                                                    selection_rate=selection_rate, feature_cm='pcc', save=True)
         
     # %% End
     from cnn_val_circle import end_program_actions
