@@ -342,10 +342,10 @@ if __name__ == '__main__':
         #                                             filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
         #                                             selection_rate=selection_rate, feature_cm='pcc', save=True)
         
-        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "manual", "type": "2d"},
-                                                    filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d"},
+                                                    filtering_params={'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 0.25},
                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
-        
+
     # %% End
     from cnn_val_circle import end_program_actions
     end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)
