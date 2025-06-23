@@ -16,6 +16,60 @@ from utils import utils_feature_loading
 
 import cw_manager
 
+# %% read parameters/save
+def read_params(model='exponential', model_fm='basic', model_rcm='differ', folder='fitting_results(15_15_joint_band_from_mat)'):
+    identifier = f'{model_fm.lower()}_fm_{model_rcm.lower()}_rcm'
+    
+    path_current = os.getcwd()
+    path_fitting_results = os.path.join(path_current, 'fitting_results', folder)
+    file_path = os.path.join(path_fitting_results, f'fitting_results({identifier}).xlsx')
+    
+    df = pd.read_excel(file_path).set_index('method')
+    df_dict = df.to_dict(orient='index')
+    
+    model = model.upper()
+    params = df_dict[model]
+    
+    return params
+
+def save_to_xlsx_sheet(df, folder_name, file_name, sheet_name):
+    output_dir = os.path.join(os.getcwd(), folder_name)
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, file_name)
+
+    # Append or create the Excel file
+    if os.path.exists(file_path):
+        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+    else:
+        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+    
+def save_to_xlsx_fitting(results, subject_range, experiment_range, folder_name, file_name, sheet_name):
+    # calculate average
+    result_keys = results[0].keys()
+    avg_results = {key: np.mean([res[key] for res in results]) for key in result_keys}
+    
+    # save to xlsx
+    # 准备结果数据
+    df_results = pd.DataFrame(results)
+    df_results.insert(0, "Subject-Experiment", [f'sub{i}ex{j}' for i in subject_range for j in experiment_range])
+    df_results.loc["Average"] = ["Average"] + list(avg_results.values())
+    
+    # 构造保存路径
+    path_save = os.path.join(os.getcwd(), folder_name, file_name)
+    
+    # 判断文件是否存在
+    if os.path.exists(path_save):
+        # 追加模式，保留已有 sheet，添加新 sheet
+        with pd.ExcelWriter(path_save, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            df_results.to_excel(writer, sheet_name=sheet_name, index=False)
+    else:
+        # 新建文件
+        with pd.ExcelWriter(path_save, engine='openpyxl') as writer:
+            df_results.to_excel(writer, sheet_name=sheet_name, index=False)
+
+# %% Executor
 def cnn_subnetworks_evaluation_circle_control_1(argument='data_driven_pcc_10_15', selection_rate=1, feature_cm='pcc',
                                                 subject_range=range(11,16), experiment_range=range(1,4), 
                                                 save=False):
@@ -136,7 +190,7 @@ def cnn_subnetworks_evaluation_circle_control_2(argument='label_driven_mi_10_15'
     return df_results
 
 import spatial_gaussian_smoothing
-def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d"},
+def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
                                                  filtering_type={'residual_type': 'origin', 'lateral_mode': 'bilateral'},
                                                  filtering_params={'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 1e-3},
                                                  selection_rate=1, feature_cm='pcc', 
@@ -276,59 +330,6 @@ def cnn_subnetworks_eval_circle_rcm_intergrated(projection_params, filtering_par
     
     return results_fitting
 
-# %% read parameters/save
-def read_params(model='exponential', model_fm='basic', model_rcm='differ', folder='fitting_results(15_15_joint_band_from_mat)'):
-    identifier = f'{model_fm.lower()}_fm_{model_rcm.lower()}_rcm'
-    
-    path_current = os.getcwd()
-    path_fitting_results = os.path.join(path_current, 'fitting_results', folder)
-    file_path = os.path.join(path_fitting_results, f'fitting_results({identifier}).xlsx')
-    
-    df = pd.read_excel(file_path).set_index('method')
-    df_dict = df.to_dict(orient='index')
-    
-    model = model.upper()
-    params = df_dict[model]
-    
-    return params
-
-def save_to_xlsx_sheet(df, folder_name, file_name, sheet_name):
-    output_dir = os.path.join(os.getcwd(), folder_name)
-    os.makedirs(output_dir, exist_ok=True)
-    file_path = os.path.join(output_dir, file_name)
-
-    # Append or create the Excel file
-    if os.path.exists(file_path):
-        with pd.ExcelWriter(file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
-    else:
-        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
-    
-def save_to_xlsx_fitting(results, subject_range, experiment_range, folder_name, file_name, sheet_name):
-    # calculate average
-    result_keys = results[0].keys()
-    avg_results = {key: np.mean([res[key] for res in results]) for key in result_keys}
-    
-    # save to xlsx
-    # 准备结果数据
-    df_results = pd.DataFrame(results)
-    df_results.insert(0, "Subject-Experiment", [f'sub{i}ex{j}' for i in subject_range for j in experiment_range])
-    df_results.loc["Average"] = ["Average"] + list(avg_results.values())
-    
-    # 构造保存路径
-    path_save = os.path.join(os.getcwd(), folder_name, file_name)
-    
-    # 判断文件是否存在
-    if os.path.exists(path_save):
-        # 追加模式，保留已有 sheet，添加新 sheet
-        with pd.ExcelWriter(path_save, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            df_results.to_excel(writer, sheet_name=sheet_name, index=False)
-    else:
-        # 新建文件
-        with pd.ExcelWriter(path_save, engine='openpyxl') as writer:
-            df_results.to_excel(writer, sheet_name=sheet_name, index=False)
-
 # %% Execute
 if __name__ == '__main__':
     # selection_rate_list = [1, 0.75, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1]
@@ -342,7 +343,7 @@ if __name__ == '__main__':
         #                                             filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
         #                                             selection_rate=selection_rate, feature_cm='pcc', save=True)
         
-        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d"},
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d_euclidean"},
                                                     filtering_params={'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 0.25},
                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
 

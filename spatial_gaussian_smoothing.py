@@ -225,7 +225,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
     return filtered_matrix
 
 def fcs_residual_filtering(fcs,
-                           projection_params={"source": "auto", "type": "3d"},
+                           projection_params={"source": "auto", "type": "3d_euclidean"},
                            residual_type='residual', lateral_mode='bilateral',
                            filtering_params={'sigma': None, 'gamma': 0.25, 'lambda_reg': 0.25},
                            visualize=False):
