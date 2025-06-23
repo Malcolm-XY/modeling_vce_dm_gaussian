@@ -312,8 +312,8 @@ if __name__ == '__main__':
     # cm_gamma_smoothed_average = np.mean(cm_gamma_smoothed, axis=0)
     # utils_visualization.draw_projection(cm_gamma_smoothed_average)
     
-    projection_params = {"source": "auto", "type": "3d"}
-    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 1}
+    projection_params = {"source": "auto", "type": "3d_euclidean"}
+    filtering_params = {'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 1}
     
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='origin', lateral_mode='bilateral', 

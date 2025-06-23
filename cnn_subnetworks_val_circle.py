@@ -332,16 +332,20 @@ def cnn_subnetworks_eval_circle_rcm_intergrated(projection_params, filtering_par
 
 # %% Execute
 if __name__ == '__main__':
-    # selection_rate_list = [1, 0.75, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1]
     selection_rate_list = [1, 0.5, 0.3, 0.2, 0.1]
+    selection_rate_list = [0.2, 0.1]
     
     for selection_rate in selection_rate_list:
         # cnn_subnetworks_evaluation_circle_control_1(argument='data_driven_pcc_10_15', selection_rate=selection_rate, feature_cm='pcc', save=True)
         # cnn_subnetworks_evaluation_circle_control_2(selection_rate=selection_rate, feature_cm='pcc', save=True)
 
-        # cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d"},
-        #                                             filtering_params={'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25},
-        #                                             selection_rate=selection_rate, feature_cm='pcc', save=True)
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "manual", "type": "2d_flat"},
+                                                    filtering_params={'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 0.25},
+                                                    selection_rate=selection_rate, feature_cm='pcc', save=True)
+
+        cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                    filtering_params={'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 0.25},
+                                                    selection_rate=selection_rate, feature_cm='pcc', save=True)
         
         cnn_subnetworks_eval_circle_rcm_intergrated(projection_params={"source": "auto", "type": "3d_euclidean"},
                                                     filtering_params={'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 0.25},
@@ -349,4 +353,4 @@ if __name__ == '__main__':
 
     # %% End
     from cnn_val_circle import end_program_actions
-    end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)
+    end_program_actions(play_sound=True, shutdown=True, countdown_seconds=120)
