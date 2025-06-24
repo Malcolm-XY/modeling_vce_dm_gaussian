@@ -157,7 +157,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
 
     # Step 1: Construct Gaussian kernel (SM)
-    gaussian_kernel = np.exp(- (distance_matrix ** 2) / (sigma ** 2))
+    gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
     gaussian_kernel /= gaussian_kernel.sum(axis=1, keepdims=True)
 
     # Step 2: Construct residual kernel
@@ -313,7 +313,7 @@ if __name__ == '__main__':
     # utils_visualization.draw_projection(cm_gamma_smoothed_average)
     
     projection_params = {"source": "auto", "type": "3d_euclidean"}
-    filtering_params = {'sigma': 0.25, 'gamma': 0.25, 'lambda_reg': 1}
+    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25}
     
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='origin', lateral_mode='bilateral', 
@@ -331,12 +331,17 @@ if __name__ == '__main__':
                                                         residual_type='residual_mean', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
     
-    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.25}
+    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25}
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='pseudoinverse', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
     
-    filtering_params = {'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.5}
+    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.5}
+    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
+                                                        residual_type='pseudoinverse', lateral_mode='bilateral', 
+                                                        filtering_params=filtering_params, visualize=True)
+    
+    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 1}
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='pseudoinverse', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
