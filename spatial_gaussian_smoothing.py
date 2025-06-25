@@ -110,7 +110,7 @@ def cfs_gaussian_filtering(cfs, projection_params={"source": "auto", "type": "3d
 # %% residual filtering
 def apply_spatial_residual_filter(matrix, distance_matrix, 
                                   residual_type='residual', lateral_mode='bilateral', 
-                                  params={'sigma': None, 'gamma': None, 'lambda_reg': 1e-3},
+                                  params={'sigma': None, 'gamma': None, 'lambda_reg': 0.25},
                                   visualize=False):
     """
     Applies a spatial residual filter to a functional connectivity (FC) matrix
@@ -146,9 +146,9 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
-    sigma = params.get('sigma')
+    sigma = params.get('sigma', 0.25)
     gamma = params.get('gamma', 0.25)
-    lambda_reg = params.get('lambda_reg', 1e-3)
+    lambda_reg = params.get('lambda_reg', 0.25)
 
     if sigma is None:
         sigma = np.mean(distance_matrix[distance_matrix > 0])
@@ -157,7 +157,8 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
 
     # Step 1: Construct Gaussian kernel (SM)
-    gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+    # gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+    gaussian_kernel = np.exp(-np.square(distance_matrix) / (sigma ** 2))
     gaussian_kernel /= gaussian_kernel.sum(axis=1, keepdims=True)
 
     # Step 2: Construct residual kernel
