@@ -319,7 +319,8 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
 
 def cnn_subnetworks_eval_circle_rcm_intergrated(projection_params, filtering_params, selection_rate, feature_cm, save=False):
     # residual_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
-    residual_list = list(['origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
+    # residual_list = list(['origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
+    residual_list = list(['origin'])
     
     results_fitting = {}
     for trail in range(0, len(residual_list)):
