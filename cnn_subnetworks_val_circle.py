@@ -120,8 +120,8 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
     
     # experiment; channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
     # global channel_weights
-    # channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
-    channel_weights = functional_node_strength['gamma']
+    channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
+    # channel_weights = functional_node_strength['gamma']
     channel_weights = np.mean(np.mean(channel_weights, axis=0), axis=0)
     k = int(len(channel_weights) * selection_rate)
     channel_selected = np.argsort(channel_weights)[-k:][::-1]
@@ -152,6 +152,7 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
             # RCM
             residual_type = filtering_type.get('residual_type')
             lateral_mode = filtering_type.get('lateral_mode', 'bilateral')
+            
             alpha_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(alpha, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
             beta_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(beta, projection_params, 
@@ -200,7 +201,10 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
 # %% Execute
 if __name__ == '__main__':
     kernel_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
+    kernel_list = list(['origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
+    kernel_list = list(['pseudoinverse'])
     selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1]
+    selection_rate_list = [0.5, 0.3, 0.2, 0.1, 0.07]
     
     # for selection_rate in selection_rate_list:
         # cnn_subnetworks_evaluation_circle_control_1(argument='data_driven_pcc_10_15', selection_rate=selection_rate, feature_cm='pcc', save=True)
@@ -220,19 +224,9 @@ if __name__ == '__main__':
             
             cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
                                                          filtering_type={'residual_type': kernel},
-                                                         filtering_params={'sigma': 0.1, 'lambda_reg': 1},
-                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                         filtering_type={'residual_type': kernel},
-                                                         filtering_params={'sigma': 0.2, 'lambda_reg': 1},
-                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                         filtering_type={'residual_type': kernel},
-                                                         filtering_params={'sigma': 0.25, 'lambda_reg': 1},
+                                                         filtering_params={'sigma': 0.25, 'lambda_reg': 0.1},
                                                          selection_rate=selection_rate, feature_cm='pcc', save=True)
             
     # %% End
     from cnn_val_circle import end_program_actions
-    end_program_actions(play_sound=True, shutdown=True, countdown_seconds=120)
+    end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)
