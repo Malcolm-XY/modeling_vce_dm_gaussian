@@ -215,7 +215,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
         raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
     
     # Step 4: Reinforce
-    filtered_matrix += matrix
+    # filtered_matrix += matrix
     
     if visualize:
         try:

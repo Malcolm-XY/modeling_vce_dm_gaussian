@@ -224,7 +224,27 @@ if __name__ == '__main__':
             
             cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
                                                          filtering_type={'residual_type': kernel},
-                                                         filtering_params={'sigma': 0.25, 'lambda_reg': 0.1},
+                                                         filtering_params={'sigma': 0.0125, 'lambda_reg': 0.0125},
+                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
+            
+            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                         filtering_type={'residual_type': kernel},
+                                                         filtering_params={'sigma': 0.025, 'lambda_reg': 0.025},
+                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
+            
+            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                         filtering_type={'residual_type': kernel},
+                                                         filtering_params={'sigma': 0.05, 'lambda_reg': 0.05},
+                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
+            
+            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                         filtering_type={'residual_type': kernel},
+                                                         filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
+                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
+            
+            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                         filtering_type={'residual_type': kernel},
+                                                         filtering_params={'sigma': 0.2, 'lambda_reg': 0.2},
                                                          selection_rate=selection_rate, feature_cm='pcc', save=True)
             
     # %% End
