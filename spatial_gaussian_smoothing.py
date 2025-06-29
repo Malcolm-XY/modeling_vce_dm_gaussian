@@ -333,17 +333,17 @@ if __name__ == '__main__':
                                                         residual_type='residual_mean', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
     
+    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.1}
+    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
+                                                        residual_type='pseudoinverse', lateral_mode='bilateral', 
+                                                        filtering_params=filtering_params, visualize=True)
+    
     filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25}
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='pseudoinverse', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
     
     filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.5}
-    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
-                                                        residual_type='pseudoinverse', lateral_mode='bilateral', 
-                                                        filtering_params=filtering_params, visualize=True)
-    
-    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 1}
     cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
                                                         residual_type='pseudoinverse', lateral_mode='bilateral', 
                                                         filtering_params=filtering_params, visualize=True)
