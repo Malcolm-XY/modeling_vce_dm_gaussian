@@ -119,12 +119,33 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
             functional_node_strength['gamma'].append(strength_gamma)
     
     # experiment; channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
+    
+    # ------replaced
     # global channel_weights
-    channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
-    # channel_weights = functional_node_strength['gamma']
-    channel_weights = np.mean(np.mean(channel_weights, axis=0), axis=0)
-    k = int(len(channel_weights) * selection_rate)
-    channel_selected = np.argsort(channel_weights)[-k:][::-1]
+    # channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
+    
+    # channel_weights = np.mean(np.mean(channel_weights, axis=0), axis=0)
+    # k = int(len(channel_weights) * selection_rate)
+    # channel_selected = np.argsort(channel_weights)[-k:][::-1]
+    # ------replaced
+    
+    # ------temporal
+    channel_weights = {'gamma': np.mean(np.mean(functional_node_strength['gamma'], axis=0), axis=0),
+                       'beta': np.mean(np.mean(functional_node_strength['beta'], axis=0), axis=0),
+                       'alpha': np.mean(np.mean(functional_node_strength['alpha'], axis=0), axis=0)
+                       }
+    
+    k = {'gamma': int(len(channel_weights['gamma']) * selection_rate),
+         'beta': int(len(channel_weights['beta']) * selection_rate),
+         'alpha': int(len(channel_weights['alpha']) * selection_rate),
+          }
+    
+    channel_selects = {'gamma': np.argsort(channel_weights['gamma'])[-k['gamma']:][::-1],
+                       'beta': np.argsort(channel_weights['beta'])[-k['beta']:][::-1],
+                       'alpha': np.argsort(channel_weights['alpha'])[-k['alpha']:][::-1]
+                       }
+    
+    # ------temporal
     
     # for traning and testing in CNN
     # labels
@@ -161,9 +182,17 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
                                                                                 residual_type, lateral_mode, filtering_params)
             
             # subnetworks
-            alpha_rebuilded = alpha_rebuilded[:,channel_selected,:][:,:,channel_selected]
-            beta_rebuilded = beta_rebuilded[:,channel_selected,:][:,:,channel_selected]
-            gamma_rebuilded = gamma_rebuilded[:,channel_selected,:][:,:,channel_selected]
+            # ------replaced
+            # alpha_rebuilded = alpha_rebuilded[:,channel_selected,:][:,:,channel_selected]
+            # beta_rebuilded = beta_rebuilded[:,channel_selected,:][:,:,channel_selected]
+            # gamma_rebuilded = gamma_rebuilded[:,channel_selected,:][:,:,channel_selected]
+            # ------replaced
+            
+            # ------temporal
+            alpha_rebuilded = alpha_rebuilded[:,channel_selects['alpha'],:][:,:,channel_selects['alpha']]
+            beta_rebuilded = beta_rebuilded[:,channel_selects['beta'],:][:,:,channel_selects['beta']]
+            gamma_rebuilded = gamma_rebuilded[:,channel_selects['gamma'],:][:,:,channel_selects['gamma']]
+            # -----temporal
             
             x_rebuilded = np.stack((alpha_rebuilded, beta_rebuilded, gamma_rebuilded), axis=1)
             

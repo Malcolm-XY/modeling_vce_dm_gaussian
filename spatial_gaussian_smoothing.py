@@ -283,6 +283,7 @@ def fcs_residual_filtering(fcs,
         
     return np.stack(fcs_filtered)
 
+# %% Usage
 if __name__ == '__main__':  
     # %% Distance Matrix
     # _, distance_matrix_2d_manual = feature_engineering.compute_distance_matrix(dataset="seed", 
