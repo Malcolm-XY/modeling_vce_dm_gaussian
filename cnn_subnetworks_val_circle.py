@@ -273,7 +273,12 @@ if __name__ == '__main__':
             
             cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
                                                          filtering_type={'residual_type': kernel},
-                                                         filtering_params={'sigma': 0.2, 'lambda_reg': 0.2},
+                                                         filtering_params={'sigma': 0.25, 'lambda_reg': 0.25},
+                                                         selection_rate=selection_rate, feature_cm='pcc', save=True)
+            
+            cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                         filtering_type={'residual_type': kernel},
+                                                         filtering_params={'sigma': 0.5, 'lambda_reg': 0.5},
                                                          selection_rate=selection_rate, feature_cm='pcc', save=True)
             
     # %% End
