@@ -152,6 +152,130 @@ def filter_eeg_and_save_circle(dataset, subject_range, experiment_range=None, ve
 
 # %% Feature Engineering
 def compute_distance_matrix(dataset, projection_params=None, visualize=True):
+    if projection_params is None:
+        projection_params = {}
+
+    proj_type = projection_params.get('type', '3d_euclidean')
+    source = projection_params.get('source', 'auto')
+    resolution = projection_params.get('resolution', None)
+
+    dist = utils_feature_loading.read_distribution(dataset, source)
+    ch_names = dist['channel']
+    x, y, z = map(np.array, (dist['x'], dist['y'], dist['z']))
+    coords3d = np.stack([x, y, z], axis=-1)
+
+    coords2d, dist_mat = None, None
+
+    if proj_type == '3d_euclidean':
+        diff = coords3d[:, None, :] - coords3d[None, :, :]
+        dist_mat = np.linalg.norm(diff, axis=-1)
+        coords2d = np.stack([x, y], axis=-1)
+
+    elif proj_type == '3d_spherical':
+        unit = coords3d / np.linalg.norm(coords3d, axis=1, keepdims=True)
+        dot = np.clip(unit @ unit.T, -1.0, 1.0)
+        dist_mat = np.arccos(dot)
+        coords2d = np.stack([x, y], axis=-1)
+
+    elif proj_type == '2d_flat':
+        coords2d = np.stack([x, y], axis=-1)
+        diff = coords2d[:, None, :] - coords2d[None, :, :]
+        dist_mat = np.linalg.norm(diff, axis=-1)
+
+    elif proj_type == 'stereographic':
+        f = projection_params.get('focal_length', 1.0)
+        m = projection_params.get('max_scaling', 5.0)
+        z_norm = (z - z.min()) / (z.max() - z.min() + 1e-6)
+        scale = f / (f - z_norm + 1e-6)
+        scale = np.clip(scale, 0, m)
+        coords2d = np.stack([x * scale, y * scale], axis=-1)
+        diff = coords2d[:, None, :] - coords2d[None, :, :]
+        dist_mat = np.linalg.norm(diff, axis=-1)
+
+    elif proj_type == 'azimuthal':
+        unit = coords3d / np.linalg.norm(coords3d, axis=1, keepdims=True)
+        xu, yu, zu = unit[:, 0], unit[:, 1], unit[:, 2]
+        theta = np.arccos(zu)
+        phi = np.arctan2(yu, xu)
+        x_proj = theta * np.cos(phi)
+        y_proj = theta * np.sin(phi)
+
+        x_norm = (x_proj - np.min(x_proj)) / (np.ptp(x_proj) + 1e-6)
+        y_norm = (y_proj - np.min(y_proj)) / (np.ptp(y_proj) + 1e-6)
+
+        factor = projection_params.get('y_compression_factor', 1.0)
+        direction = projection_params.get('y_compression_direction', 'positive')
+        y_offset = y_norm - 0.5
+        if factor != 1.0:
+            if direction == 'positive':
+                y_offset[y_offset > 0] *= factor
+            elif direction == 'negative':
+                y_offset[y_offset < 0] *= factor
+            y_norm = 0.5 + y_offset
+
+        coords2d = np.stack([x_norm, y_norm], axis=-1)
+        diff = coords2d[:, None, :] - coords2d[None, :, :]
+        dist_mat = np.linalg.norm(diff, axis=-1)
+
+    else:
+        raise ValueError(f"Unsupported projection type: {proj_type}")
+
+    # == 可选栅格图输出 ==
+    proj_grid = None
+    if resolution is not None:
+        H, W = (resolution, resolution) if isinstance(resolution, int) else resolution
+        proj_grid = np.zeros((H, W), dtype=np.uint8)
+
+        uv = coords2d.astype(np.float64).copy()
+        uv -= np.mean(uv, axis=0)
+        scale = np.max(np.abs(uv)) + 1e-6
+        uv = 0.5 + uv / (2 * scale)
+
+        ix = np.clip((uv[:, 0] * (W - 1)).round().astype(int), 0, W - 1)
+        iy = np.clip((uv[:, 1] * (H - 1)).round().astype(int), 0, H - 1)
+        proj_grid[iy, ix] = 1
+
+    # == 可视化 ==
+    if visualize:
+        # ---- 1. Scatter plot ----
+        fig, ax = plt.subplots(figsize=(6, 6), facecolor='white')
+        ax.set_facecolor('white')
+        ax.scatter(coords2d[:, 0], coords2d[:, 1], c='blue', s=30)
+        for i, name in enumerate(ch_names):
+            ax.text(coords2d[i, 0], coords2d[i, 1], name, fontsize=8, ha='right', va='bottom')
+        ax.set_title(f"Projection: {proj_type}", fontsize=12)
+        ax.axis('equal')
+        ax.grid(True, linestyle='--', color='lightgray', linewidth=0.5)
+        plt.tight_layout()
+        plt.show()
+
+        # ---- 2. Grid image with cell borders ----
+        if proj_grid is not None:
+            H, W = proj_grid.shape
+            iy, ix = np.nonzero(proj_grid)
+        
+            fig, ax = plt.subplots(figsize=(5, 5))
+            ax.set_facecolor("white")
+            ax.scatter(ix, iy, c='blue', s=60)  # 点大小可调（建议 s=20~50）
+        
+            # 网格线
+            ax.set_xticks(np.arange(-0.5, W, 1), minor=True)
+            ax.set_yticks(np.arange(-0.5, H, 1), minor=True)
+            ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5)
+            ax.tick_params(which='minor', size=0)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xlim(-0.5, W - 0.5)
+            ax.set_ylim(-0.5, H - 0.5)
+            ax.invert_yaxis()
+            ax.set_title(f"Projection Grid {H}×{W}")
+            plt.gca().invert_yaxis()  # 坐标方向和 imshow 一致
+            plt.tight_layout()
+            plt.show()
+        
+    return ch_names, dist_mat, proj_grid
+
+def compute_distance_matrix_(dataset, projection_params=None, visualize=True):
     """
     计算EEG电极之间的距离矩阵，支持多种投影与距离计算方法。
 
@@ -186,14 +310,16 @@ def compute_distance_matrix(dataset, projection_params=None, visualize=True):
     if projection_type == '3d_euclidean':
         diff = coords[:, np.newaxis, :] - coords[np.newaxis, :, :]
         distance_matrix = np.sqrt(np.sum(diff ** 2, axis=-1))
+        
         return channel_names, distance_matrix
-
+    
     elif projection_type == '3d_spherical':
         unit_coords = coords / np.linalg.norm(coords, axis=1, keepdims=True)
         dot_products = np.clip(unit_coords @ unit_coords.T, -1.0, 1.0)
         distance_matrix = np.arccos(dot_products)
+        
         return channel_names, distance_matrix
-
+        
     elif projection_type == '2d_flat':
         coords_2d = np.vstack((x, y)).T
 
@@ -241,13 +367,13 @@ def compute_distance_matrix(dataset, projection_params=None, visualize=True):
         plt.figure(figsize=(6, 6))
         plt.scatter(coords_2d[:, 0], coords_2d[:, 1], c='blue')
         for i, name in enumerate(channel_names):
-            plt.text(coords_2d[i, 0], coords_2d[i, 1], name, fontsize=8, ha='right', va='bottom')
+            plt.text(coords_2d[i, 0], coords_2d[i, 1], name, fontsize=14, ha='right', va='bottom')
         plt.title(f"Projection: {projection_type}")
         plt.axis("equal")
         plt.grid(True)
         plt.tight_layout()
         plt.show()
-
+    
     return channel_names, distance_matrix
 
 def fc_matrices_circle(dataset, subject_range=range(1, 2), experiment_range=range(1, 2),
