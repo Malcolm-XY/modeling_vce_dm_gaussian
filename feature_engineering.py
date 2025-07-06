@@ -273,7 +273,9 @@ def compute_distance_matrix(dataset, projection_params=None, visualize=True, c='
             plt.tight_layout()
             plt.show()
         
-    return ch_names, dist_mat, proj_grid
+    # return ch_names, dist_mat, proj_grid
+
+    return ch_names, dist_mat
 
 def compute_distance_matrix_(dataset, projection_params=None, visualize=True):
     """

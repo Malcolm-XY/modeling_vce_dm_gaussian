@@ -230,47 +230,41 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
 # %% Execute
 if __name__ == '__main__':
     kernel_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
-    kernel_list = list(['origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
-    kernel_list = list(['pseudoinverse'])
-    selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1]
-    selection_rate_list = [0.5, 0.3, 0.2, 0.1, 0.07]
-    selection_rate_list = [1]
+    kernel_list = list(['origin', 'origin_gaussian', 'pseudoinverse'])
+    selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07]
     
     for selection_rate in selection_rate_list:
-        # cnn_subnetworks_evaluation_circle_control_1(argument='data_driven_pcc_10_15', selection_rate=selection_rate, feature_cm='pcc', save=True)
-        # cnn_subnetworks_evaluation_circle_control_2(selection_rate=selection_rate, feature_cm='pcc', save=True)
-
         cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
                                                      filtering_type={'residual_type': 'origin'},
                                                      filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
                                                      selection_rate=selection_rate, feature_cm='pcc', save=True)
+        
+        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                     filtering_type={'residual_type': 'origin_gaussian'},
+                                                     filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
+                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+        
+        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                     filtering_type={'residual_type': 'pseudoinverse'},
+                                                     filtering_params={'sigma': 0.075, 'lambda_reg': 0.075},
+                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+    
+        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                     filtering_type={'residual_type': 'pseudoinverse'},
+                                                     filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
+                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+    
+        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                     filtering_type={'residual_type': 'pseudoinverse'},
+                                                     filtering_params={'sigma': 0.2, 'lambda_reg': 0.2},
+                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
     
     # for kernel in kernel_list:
     #     for selection_rate in selection_rate_list:
-            # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "manual", "type": "2d_flat"},
-            #                                              filtering_type={'residual_type': kernel},
-            #                                              filtering_params={'sigma': 0.2, 'gamma': 0.2, 'lambda_reg': 0.25},
-            #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
-            #                                              filtering_type={'residual_type': kernel},
-            #                                              filtering_params={'sigma': 0.1, 'lambda_reg': 0.25},
-            #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "manual", "type": "2d_flat"},
-            #                                              filtering_type={'residual_type': kernel},
-            #                                              filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
-            #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
-            #                                              filtering_type={'residual_type': kernel},
-            #                                              filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
-            #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-            #                                              filtering_type={'residual_type': kernel},
-            #                                              filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
-            #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
+    #         cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+    #                                                      filtering_type={'residual_type': kernel},
+    #                                                      filtering_params={'sigma': 0.1, 'lambda_reg': 0.075},
+    #                                                      selection_rate=selection_rate, feature_cm='pcc', save=True)
             
             
     # %% End
