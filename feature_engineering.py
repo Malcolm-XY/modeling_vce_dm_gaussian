@@ -151,7 +151,7 @@ def filter_eeg_and_save_circle(dataset, subject_range, experiment_range=None, ve
         raise ValueError("Error of unexpected subject or experiment range designation.")
 
 # %% Feature Engineering
-def compute_distance_matrix(dataset, projection_params=None, visualize=True):
+def compute_distance_matrix(dataset, projection_params=None, visualize=True, c='blue'):
     if projection_params is None:
         projection_params = {}
 
@@ -240,7 +240,7 @@ def compute_distance_matrix(dataset, projection_params=None, visualize=True):
         # ---- 1. Scatter plot ----
         fig, ax = plt.subplots(figsize=(6, 6), facecolor='white')
         ax.set_facecolor('white')
-        ax.scatter(coords2d[:, 0], coords2d[:, 1], c='blue', s=30)
+        ax.scatter(coords2d[:, 0], coords2d[:, 1], c=c, s=30)
         for i, name in enumerate(ch_names):
             ax.text(coords2d[i, 0], coords2d[i, 1], name, fontsize=8, ha='right', va='bottom')
         ax.set_title(f"Projection: {proj_type}", fontsize=12)
@@ -256,7 +256,7 @@ def compute_distance_matrix(dataset, projection_params=None, visualize=True):
         
             fig, ax = plt.subplots(figsize=(5, 5))
             ax.set_facecolor("white")
-            ax.scatter(ix, iy, c='blue', s=60)  # 点大小可调（建议 s=20~50）
+            ax.scatter(ix, iy, c=c, s=60)  # 点大小可调（建议 s=20~50）
         
             # 网格线
             ax.set_xticks(np.arange(-0.5, W, 1), minor=True)

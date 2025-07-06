@@ -24,5 +24,5 @@ utils_visualization.draw_projection(pcc_gamma_sample[0, 0:23, 0:23], None, elect
 
 import feature_engineering
 
-feature_engineering.compute_distance_matrix('seed', {'source': 'auto', 'type': '2d_flat', 'resolution': 37}, True)
-feature_engineering.compute_distance_matrix('seed', {'source': 'manual', 'type': '2d_flat', 'resolution': 19}, True)
+feature_engineering.compute_distance_matrix('seed', {'source': 'auto', 'type': '2d_flat', 'resolution': 19}, True)
+feature_engineering.compute_distance_matrix('seed', {'source': 'manual', 'type': '2d_flat', 'resolution': 19}, True, c='orange')
