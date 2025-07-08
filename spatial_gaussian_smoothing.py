@@ -110,7 +110,7 @@ def cfs_gaussian_filtering(cfs, projection_params={"source": "auto", "type": "3d
 # %% residual filtering
 def apply_spatial_residual_filter(matrix, distance_matrix, 
                                   residual_type='residual', lateral_mode='bilateral', 
-                                  params={'sigma': None, 'gamma': None, 'lambda_reg': 0.25},
+                                  params={'sigma': None, 'gamma': None, 'lambda_reg': 0.25, 'reinforce': False}, 
                                   visualize=False):
     """
     Applies a spatial residual filter to a functional connectivity (FC) matrix
@@ -215,7 +215,8 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
         raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
     
     # Step 4: Reinforce
-    # filtered_matrix += matrix
+    if params.get('reinforce', False):
+        filtered_matrix += matrix
     
     if visualize:
         try:
@@ -228,7 +229,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
 def fcs_residual_filtering(fcs,
                            projection_params={"source": "auto", "type": "3d_euclidean"},
                            residual_type='residual', lateral_mode='bilateral',
-                           filtering_params={'sigma': None, 'gamma': 0.25, 'lambda_reg': 0.25},
+                           filtering_params={'sigma': None, 'gamma': 0.25, 'lambda_reg': 0.25, 'reinforce': False}, 
                            visualize=False):
     """
     Applies spatial residual filtering to a list/array of functional connectivity matrices (FCs),

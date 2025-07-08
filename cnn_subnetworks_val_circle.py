@@ -71,7 +71,7 @@ def save_to_xlsx_fitting(results, subject_range, experiment_range, folder_name, 
 import spatial_gaussian_smoothing
 def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
                                                  filtering_type={'residual_type': 'origin', 'lateral_mode': 'bilateral'},
-                                                 filtering_params={'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.25},
+                                                 filtering_params={'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.25, 'reinforce': False},
                                                  selection_rate=1, feature_cm='pcc', 
                                                  subject_range=range(11,16), experiment_range=range(1,4), 
                                                  save=False):
@@ -118,18 +118,7 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
             functional_node_strength['beta'].append(strength_beta)
             functional_node_strength['gamma'].append(strength_gamma)
     
-    # experiment; channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
-    
-    # ------replaced
-    # global channel_weights
-    # channel_weights = functional_node_strength['beta'] + functional_node_strength['alpha'] + functional_node_strength['gamma']
-    
-    # channel_weights = np.mean(np.mean(channel_weights, axis=0), axis=0)
-    # k = int(len(channel_weights) * selection_rate)
-    # channel_selected = np.argsort(channel_weights)[-k:][::-1]
-    # ------replaced
-    
-    # ------temporal
+    # channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
     channel_weights = {'gamma': np.mean(np.mean(functional_node_strength['gamma'], axis=0), axis=0),
                        'beta': np.mean(np.mean(functional_node_strength['beta'], axis=0), axis=0),
                        'alpha': np.mean(np.mean(functional_node_strength['alpha'], axis=0), axis=0)
@@ -145,13 +134,12 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
                        'alpha': np.argsort(channel_weights['alpha'])[-k['alpha']:][::-1]
                        }
     
-    # ------temporal
-    
     # for traning and testing in CNN
     # labels
     labels = utils_feature_loading.read_labels(dataset='seed')
     y = torch.tensor(np.array(labels)).view(-1)
     # data and evaluation circle
+    
     all_results_list = []
     for sub in subject_range:
         for ex in experiment_range:
@@ -181,18 +169,9 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
             gamma_rebuilded = spatial_gaussian_smoothing.fcs_residual_filtering(gamma, projection_params, 
                                                                                 residual_type, lateral_mode, filtering_params)
             
-            # subnetworks
-            # ------replaced
-            # alpha_rebuilded = alpha_rebuilded[:,channel_selected,:][:,:,channel_selected]
-            # beta_rebuilded = beta_rebuilded[:,channel_selected,:][:,:,channel_selected]
-            # gamma_rebuilded = gamma_rebuilded[:,channel_selected,:][:,:,channel_selected]
-            # ------replaced
-            
-            # ------temporal
             alpha_rebuilded = alpha_rebuilded[:,channel_selects['alpha'],:][:,:,channel_selects['alpha']]
             beta_rebuilded = beta_rebuilded[:,channel_selects['beta'],:][:,:,channel_selects['beta']]
             gamma_rebuilded = gamma_rebuilded[:,channel_selects['gamma'],:][:,:,channel_selects['gamma']]
-            # -----temporal
             
             x_rebuilded = np.stack((alpha_rebuilded, beta_rebuilded, gamma_rebuilded), axis=1)
             
@@ -218,9 +197,10 @@ def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "a
         prj_type = projection_params.get('type')
         residual_type = filtering_type.get('residual_type')
         sigma = filtering_params.get('sigma')
+        lambda_reg = filtering_params.get('lambda_reg')
         
         folder_name = 'results_cnn_subnetwork_evaluation'
-        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{prj_type}_prj_{residual_type}_kernel_sigma_{sigma}.xlsx'
+        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{prj_type}_{residual_type}_sigma_{sigma}_lamda_{lambda_reg}.xlsx'
         sheet_name = f'{residual_type}_sr_{selection_rate}'
         
         save_to_xlsx_sheet(df_results, folder_name, file_name, sheet_name)
@@ -232,39 +212,29 @@ if __name__ == '__main__':
     kernel_list = list(['origin', 'origin_gaussian', 'inverse', 'residual_mean', 'pseudoinverse'])
     kernel_list = list(['origin', 'origin_gaussian', 'pseudoinverse'])
     selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07]
+    selection_rate_list = [0.3, 0.2, 0.1]
     
-    for selection_rate in selection_rate_list:
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'origin'},
-                                                     filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+    sigma_candidates = [0.05, 0.1, 0.15, 0.2, 0.3]
+    lambda_candidates = [1e-4, 1e-3, 1e-2, 0.1, 1.0]
+    
+    for selection_rate in selection_rate_list:      
+        # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+        #                                              filtering_type={'residual_type': 'origin_gaussian'},
+        #                                              filtering_params={'sigma': 0.1, 'lambda_reg': 0.1, 'reinforce': False},
+        #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
         
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'origin_gaussian'},
-                                                     filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+        # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+        #                                              filtering_type={'residual_type': 'pseudoinverse'},
+        #                                              filtering_params={'sigma': 0.1, 'lambda_reg': 0.05, 'reinforce': False},
+        #                                              selection_rate=selection_rate, feature_cm='pcc', save=True)
         
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'pseudoinverse'},
-                                                     filtering_params={'sigma': 0.075, 'lambda_reg': 0.075},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
-    
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'pseudoinverse'},
-                                                     filtering_params={'sigma': 0.1, 'lambda_reg': 0.1},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
-    
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'pseudoinverse'},
-                                                     filtering_params={'sigma': 0.2, 'lambda_reg': 0.2},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
-    
-    # for kernel in kernel_list:
-    #     for selection_rate in selection_rate_list:
-    #         cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-    #                                                      filtering_type={'residual_type': kernel},
-    #                                                      filtering_params={'sigma': 0.1, 'lambda_reg': 0.075},
-    #                                                      selection_rate=selection_rate, feature_cm='pcc', save=True)
+        for sigma in sigma_candidates:
+            for lam in lambda_candidates:
+        
+                cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                             filtering_type={'residual_type': 'pseudoinverse'},
+                                                             filtering_params={'sigma': sigma, 'lambda_reg': lam, 'reinforce': False},
+                                                             selection_rate=selection_rate, feature_cm='pcc', save=True)
             
             
     # %% End

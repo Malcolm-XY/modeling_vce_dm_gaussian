@@ -151,7 +151,7 @@ def filter_eeg_and_save_circle(dataset, subject_range, experiment_range=None, ve
         raise ValueError("Error of unexpected subject or experiment range designation.")
 
 # %% Feature Engineering
-def compute_distance_matrix(dataset, projection_params=None, visualize=True, c='blue'):
+def compute_distance_matrix(dataset, projection_params=None, visualize=False, c='blue'):
     if projection_params is None:
         projection_params = {}
 
