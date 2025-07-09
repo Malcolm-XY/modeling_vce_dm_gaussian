@@ -214,8 +214,8 @@ if __name__ == '__main__':
     selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07]
     selection_rate_list = [1, 0.5, 0.4]
     
-    sigma_candidates = [0.05, 0.1, 0.15, 0.2, 0.3]
-    lambda_candidates = [0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 0.1, 1.0]
+    sigma_candidates = [1, 0.5, 0.4, 0.3, 0.2, 0.1]
+    lambda_candidates = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
     
     for selection_rate in selection_rate_list:      
         # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
@@ -234,9 +234,8 @@ if __name__ == '__main__':
                 cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
                                                              filtering_type={'residual_type': 'pseudoinverse'},
                                                              filtering_params={'sigma': sigma, 'lambda_reg': lam, 'reinforce': False},
-                                                             selection_rate=selection_rate, feature_cm='pcc', save=True)
-            
-            
+                                                             selection_rate=selection_rate, feature_cm='plv', save=True)
+
     # %% End
     from cnn_val_circle import end_program_actions
     end_program_actions(play_sound=True, shutdown=True, countdown_seconds=120)
