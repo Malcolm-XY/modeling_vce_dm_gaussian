@@ -299,13 +299,19 @@ if __name__ == '__main__':
     distance_matrix_3d = feature_engineering.normalize_matrix(distance_matrix_3d)
     utils_visualization.draw_projection(distance_matrix_3d) # , xticklabels=electrodes, yticklabels=electrodes)
     
-    _, distance_matrix_3d = feature_engineering.compute_distance_matrix(dataset="seed", 
+    _, distance_matrix_3d_s = feature_engineering.compute_distance_matrix(dataset="seed", 
                                                                         projection_params={"source": "auto", "type": "3d_spherical"})
-    distance_matrix_3d = feature_engineering.normalize_matrix(distance_matrix_3d)
-    utils_visualization.draw_projection(distance_matrix_3d) # , xticklabels=electrodes, yticklabels=electrodes)
+    distance_matrix_3d_s = feature_engineering.normalize_matrix(distance_matrix_3d_s)
+    utils_visualization.draw_projection(distance_matrix_3d_s) # , xticklabels=electrodes, yticklabels=electrodes)
     
     sigma = 0.1
     gaussian_kernel = np.exp(-np.square(distance_matrix_3d) / (sigma ** 2))
+    utils_visualization.draw_projection(gaussian_kernel)
+
+    gaussian_kernel = np.exp(-np.square(distance_matrix_3d_s) / (sigma ** 2))
+    utils_visualization.draw_projection(gaussian_kernel)
+    
+    gaussian_kernel = np.exp(-np.square(distance_matrix_2d_manual) / (sigma ** 2))
     utils_visualization.draw_projection(gaussian_kernel)
     
     # %% Connectivity Matrix

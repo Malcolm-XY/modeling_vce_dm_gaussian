@@ -26,3 +26,5 @@ import feature_engineering
 
 feature_engineering.compute_distance_matrix('seed', {'source': 'auto', 'type': '2d_flat', 'resolution': 19}, True)
 feature_engineering.compute_distance_matrix('seed', {'source': 'manual', 'type': '2d_flat', 'resolution': 19}, True, c='orange')
+
+feature_engineering.compute_distance_matrix('seed', {'source': 'auto', 'type': 'stereographic', 'resolution': 19}, True)
