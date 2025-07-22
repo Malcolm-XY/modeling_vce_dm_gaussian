@@ -213,10 +213,11 @@ if __name__ == '__main__':
     # kernel_list = list(['origin', 'origin_gaussian', 'pseudoinverse'])
     # selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07]
     
-    selection_rate_list = [0.3, 0.2, 0.1]
+    selection_rate_list = [1, 0.5, 0.4]
     
-    sigma_candidates = [0.3, 0.2, 0.15, 0.1, 0.05]
+    sigma_candidates = [0.3, 0.2, 0.15, 0.1, 0.05, 0.01]
     lambda_candidates = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
+    lambda_candidates = [0]
     
     for selection_rate in selection_rate_list:      
         # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
@@ -239,4 +240,4 @@ if __name__ == '__main__':
 
     # %% End
     from cnn_val_circle import end_program_actions
-    end_program_actions(play_sound=True, shutdown=True, countdown_seconds=120)
+    end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)
