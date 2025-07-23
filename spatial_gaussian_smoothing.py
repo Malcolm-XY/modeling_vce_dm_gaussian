@@ -110,7 +110,7 @@ def cfs_gaussian_filtering(cfs, projection_params={"source": "auto", "type": "3d
 # %% residual filtering
 def apply_spatial_residual_filter(matrix, distance_matrix, 
                                   residual_type='residual', lateral_mode='bilateral', 
-                                  params={'sigma': None, 'gamma': None, 'lambda_reg': 0.25, 'reinforce': False}, 
+                                  params={'sigma': None, 'gamma': None, 'lambda_reg': None, 'reinforce': False}, 
                                   visualize=False):
     """
     Applies a spatial residual filter to a functional connectivity (FC) matrix
@@ -146,9 +146,9 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
-    sigma = params.get('sigma', 0.25)
-    gamma = params.get('gamma', 0.25)
-    lambda_reg = params.get('lambda_reg', 0.25)
+    sigma = params.get('sigma', 0.1)
+    gamma = params.get('gamma', 0.1)
+    lambda_reg = params.get('lambda_reg', 0.1)
 
     if sigma is None:
         sigma = np.mean(distance_matrix[distance_matrix > 0])
@@ -158,14 +158,13 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
 
     # Step 1: Construct Gaussian kernel (SM)
     gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
-    # gaussian_kernel = np.exp(-np.square(distance_matrix) / (sigma ** 2))
     gaussian_kernel /= gaussian_kernel.sum(axis=1, keepdims=True)
 
     # Step 2: Construct residual kernel
     if residual_type == 'origin':
         return matrix
     
-    elif residual_type == 'origin_gaussian':
+    elif residual_type == 'gaussian':
         residual_kernel = gaussian_kernel
     
     elif residual_type == 'residual':
@@ -229,7 +228,7 @@ def apply_spatial_residual_filter(matrix, distance_matrix,
 def fcs_residual_filtering(fcs,
                            projection_params={"source": "auto", "type": "3d_euclidean"},
                            residual_type='residual', lateral_mode='bilateral',
-                           filtering_params={'sigma': None, 'gamma': 0.25, 'lambda_reg': 0.25, 'reinforce': False}, 
+                           filtering_params={'sigma': None, 'gamma': None, 'lambda_reg': None, 'reinforce': False}, 
                            visualize=False):
     """
     Applies spatial residual filtering to a list/array of functional connectivity matrices (FCs),
@@ -289,72 +288,43 @@ if __name__ == '__main__':
     # electrodes = utils_feature_loading.read_distribution('seed')['channel']
     
     # %% Distance Matrix
-    _, distance_matrix_2d_manual = feature_engineering.compute_distance_matrix(dataset="seed", 
-                                                                        projection_params={"source": "manual", "type": "2d_flat"})
-    distance_matrix_2d_manual = feature_engineering.normalize_matrix(distance_matrix_2d_manual)
-    utils_visualization.draw_projection(distance_matrix_2d_manual) # , xticklabels=electrodes, yticklabels=electrodes)
-    
-    _, distance_matrix_3d = feature_engineering.compute_distance_matrix(dataset="seed", 
+    _, distance_matrix_euc = feature_engineering.compute_distance_matrix(dataset="seed", 
                                                                         projection_params={"source": "auto", "type": "3d_euclidean"})
-    distance_matrix_3d = feature_engineering.normalize_matrix(distance_matrix_3d)
-    utils_visualization.draw_projection(distance_matrix_3d) # , xticklabels=electrodes, yticklabels=electrodes)
+    distance_matrix_euc = feature_engineering.normalize_matrix(distance_matrix_euc)
+    utils_visualization.draw_projection(distance_matrix_euc) # , xticklabels=electrodes, yticklabels=electrodes)
     
-    _, distance_matrix_3d_s = feature_engineering.compute_distance_matrix(dataset="seed", 
+    _, distance_matrix_sph = feature_engineering.compute_distance_matrix(dataset="seed", 
                                                                         projection_params={"source": "auto", "type": "3d_spherical"})
-    distance_matrix_3d_s = feature_engineering.normalize_matrix(distance_matrix_3d_s)
-    utils_visualization.draw_projection(distance_matrix_3d_s) # , xticklabels=electrodes, yticklabels=electrodes)
+    distance_matrix_sph = feature_engineering.normalize_matrix(distance_matrix_sph)
+    utils_visualization.draw_projection(distance_matrix_sph) # , xticklabels=electrodes, yticklabels=electrodes)
     
     sigma = 0.1
-    gaussian_kernel = np.exp(-np.square(distance_matrix_3d) / (sigma ** 2))
+    gaussian_kernel = np.exp(-np.square(distance_matrix_euc) / (2 * sigma ** 2))
     utils_visualization.draw_projection(gaussian_kernel)
 
-    gaussian_kernel = np.exp(-np.square(distance_matrix_3d_s) / (sigma ** 2))
-    utils_visualization.draw_projection(gaussian_kernel)
-    
-    gaussian_kernel = np.exp(-np.square(distance_matrix_2d_manual) / (sigma ** 2))
+    gaussian_kernel = np.exp(-np.square(distance_matrix_sph) / (2 * sigma ** 2))
     utils_visualization.draw_projection(gaussian_kernel)
     
     # %% Connectivity Matrix
-    cm_pcc_sample = utils_feature_loading.read_fcs_mat(dataset='seed', identifier='sub1ex1', feature='pcc')
-    gamma = cm_pcc_sample['gamma']
-
-    # cm_gamma_smoothed = fcs_gaussian_filtering(gamma, {"source": "auto", "type": "3d"}, 'bilateral', 0.125)
-    # cm_gamma_smoothed_average = np.mean(cm_gamma_smoothed, axis=0)
-    # utils_visualization.draw_projection(cm_gamma_smoothed_average)
+    # get sample and visualize sample
+    sample = utils_feature_loading.read_fcs_mat(dataset='seed', identifier='sub1ex1', feature='pcc')['gamma']
+    sample_average = np.mean(sample, axis=0)
+    utils_visualization.draw_projection(sample_average)
     
-    projection_params = {"source": "auto", "type": "3d_euclidean"}
-    filtering_params = {'sigma': 0.001, 'gamma': 0.1, 'lambda_reg': 0.25}
+    # gaussian smooth
+    cm_gamma_residual_filtered = fcs_residual_filtering(sample, projection_params={"source": "auto", "type": "3d_spherical"}, 
+                                                        residual_type='gaussian', lateral_mode='bilateral', 
+                                                        filtering_params={'sigma': 0.1}, visualize=True)
     
-    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
-                                                        residual_type='origin_gaussian', lateral_mode='bilateral', 
-                                                        filtering_params=filtering_params, visualize=True)
-    
-    # cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
-    #                                                     residual_type='origin_gaussian', lateral_mode='bilateral', 
-    #                                                     filtering_params=filtering_params, visualize=True)
-    
-    # cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
-    #                                                     residual_type='inverse', lateral_mode='bilateral', 
-    #                                                     filtering_params=filtering_params, visualize=True)
-    
-    # cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
-    #                                                     residual_type='residual_mean', lateral_mode='bilateral', 
-    #                                                     filtering_params=filtering_params, visualize=True)
-    
-    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.1}
-    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
+    # inverse gaussian
+    cm_gamma_residual_filtered = fcs_residual_filtering(sample, projection_params={"source": "auto", "type": "3d_spherical"}, 
                                                         residual_type='pseudoinverse', lateral_mode='bilateral', 
-                                                        filtering_params=filtering_params, visualize=True)
+                                                        filtering_params={'sigma': 0.1, 'lambda_reg': 0.1}, visualize=True)
     
-    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.25}
-    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
+    # inverse gaussian
+    cm_gamma_residual_filtered = fcs_residual_filtering(sample, projection_params={"source": "auto", "type": "3d_spherical"}, 
                                                         residual_type='pseudoinverse', lateral_mode='bilateral', 
-                                                        filtering_params=filtering_params, visualize=True)
-    
-    filtering_params = {'sigma': 0.1, 'gamma': 0.1, 'lambda_reg': 0.5}
-    cm_gamma_residual_filtered = fcs_residual_filtering(gamma, projection_params, 
-                                                        residual_type='pseudoinverse', lateral_mode='bilateral', 
-                                                        filtering_params=filtering_params, visualize=True)
+                                                        filtering_params={'sigma': 0.1, 'lambda_reg': 0.01}, visualize=True)
     
     # %% Channel Feature
     # de_sample = utils_feature_loading.read_cfs('seed', 'sub1ex1', 'de_LDS')
