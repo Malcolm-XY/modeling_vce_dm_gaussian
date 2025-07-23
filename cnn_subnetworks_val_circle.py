@@ -213,7 +213,7 @@ if __name__ == '__main__':
     # kernel_list = list(['origin', 'origin_gaussian', 'pseudoinverse'])
     # selection_rate_list = [1, 0.5, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07]
     
-    selection_rate_list = [1, 0.5, 0.4]
+    selection_rate_list = [0.3, 0.2, 0.1]
     
     sigma_candidates = [0.3, 0.2, 0.15, 0.1, 0.05, 0.01]
     sigma_candidates = [0.01]

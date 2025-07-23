@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 data = {
     "Identifier": [
         "FN", "", "", "", "",
-        "FN_recovered_lamda_0.1", "", "", "", "",
-        "FN_recovered_lamda_0.25", "", "", "", "",
-        "FN_recovered_lamda_0.5", "", "", "", ""
+        "Recovered FN_lamda_0.1", "", "", "", "",
+        "Recovered FN_lamda_0.25", "", "", "", "",
+        "Recovered FN_lamda_0.5", "", "", "", ""
     ],
     "accuracy": [
         88.33055073, 82.25789727, 74.14004735, 60.48042515, 51.78654948,
@@ -47,7 +47,7 @@ plt.errorbar(
 
 # Plot recovered methods with error bars
 recovered_colors = ['teal', 'mediumturquoise', 'cadetblue']
-for i, label in enumerate(["FN_recovered_lamda_0.1", "FN_recovered_lamda_0.25", "FN_recovered_lamda_0.5"]):
+for i, label in enumerate(["Recovered FN_lamda_0.1", "Recovered FN_lamda_0.25", "Recovered FN_lamda_0.5"]):
     sub_data = df[df["Identifier"] == label]
     plt.errorbar(
         sub_data["sr"], sub_data["accuracy"], yerr=sub_data["std"],
@@ -56,7 +56,7 @@ for i, label in enumerate(["FN_recovered_lamda_0.1", "FN_recovered_lamda_0.25", 
     )
 
 # Customize the plot
-plt.xlabel("Selection Rate", fontsize=16, loc='center')
+plt.xlabel("Selection Rate (for extraction of subnetworks)", fontsize=16, loc='center')
 plt.ylabel("Accuracy (%)", fontsize=16, loc='center')
 # plt.title("Accuracy vs Selection Rate", fontsize=16)
 plt.gca().invert_xaxis()  # Reverse x-axis
@@ -118,7 +118,7 @@ for i, identifier in enumerate(identifiers):
     plt.plot(sub_df['sr'], sub_df['std'], marker='o', markersize=8, linewidth=3, label=identifier, color=colors[i])
 
 # Customize the plot
-plt.xlabel("Selection Rate", fontsize=16, loc='center')
+plt.xlabel("Selection Rate (for extraction of subnetworks)", fontsize=16, loc='center')
 plt.ylabel("Standard Deviation (%)", fontsize=16)
 plt.gca().invert_xaxis()
 plt.xticks(fontsize=14)
