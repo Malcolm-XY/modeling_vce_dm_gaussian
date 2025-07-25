@@ -68,8 +68,7 @@ def save_to_xlsx_fitting(results, subject_range, experiment_range, folder_name, 
             df_results.to_excel(writer, sheet_name=sheet_name, index=False)
 
 # %% Executor
-def cnn_subnetworks_evaluation_circle_original_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
-                                                 selection_rate=1, feature_cm='pcc', 
+def cnn_subnetworks_evaluation_circle_original_cm(selection_rate=1, feature_cm='pcc', 
                                                  subject_range=range(11,16), experiment_range=range(1,4), 
                                                  save=False):
     functional_node_strength = {
@@ -170,11 +169,9 @@ def cnn_subnetworks_evaluation_circle_original_cm(projection_params={"source": "
     df_results = pd.concat([df_results, pd.DataFrame([mean_row])], ignore_index=True)
     
     # Save
-    if save:
-        prj_type = projection_params.get('type')
-        
+    if save:        
         folder_name = 'results_cnn_subnetwork_evaluation'
-        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{prj_type}_origin.xlsx'
+        file_name = f'cnn_validation_SubRCM_{feature_cm}_origin.xlsx'
         sheet_name = f'sr_{selection_rate}'
         
         save_to_xlsx_sheet(df_results, folder_name, file_name, sheet_name)
@@ -183,6 +180,259 @@ def cnn_subnetworks_evaluation_circle_original_cm(projection_params={"source": "
 
 import spatial_gaussian_smoothing
 def cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
+                                                 filter_params={'computation': 'pseudoinverse', 'lateral_mode': 'bilateral',
+                                                                'sigma': 0.1, 'lambda_reg': 0.01, 'reinforce': False}, 
+                                                 selection_rate=1, feature_cm='pcc', 
+                                                 subject_range=range(11,16), experiment_range=range(1,4), 
+                                                 save=False):
+    functional_node_strength = {
+        'alpha': [],
+        'beta': [],
+        'gamma': []
+    }
+    
+    for sub in subject_range:
+        for ex in experiment_range:
+            subject_id = f"sub{sub}ex{ex}"
+            print(f"Evaluating {subject_id}...")
+            
+            # CM/MAT
+            # features = utils_feature_loading.read_fcs_mat('seed', subject_id, feature_cm)
+            # alpha = features['alpha']
+            # beta = features['beta']
+            # gamma = features['gamma']
+
+            # CM/H5
+            features = utils_feature_loading.read_fcs('seed', subject_id, feature_cm)
+            alpha = features['alpha']
+            beta = features['beta']
+            gamma = features['gamma']
+
+            # RCM           
+            alpha_rebuilded = spatial_gaussian_smoothing.fcs_spatial_filter(alpha, projection_params, filter_params)
+            beta_rebuilded = spatial_gaussian_smoothing.fcs_spatial_filter(beta, projection_params, filter_params)
+            gamma_rebuilded = spatial_gaussian_smoothing.fcs_spatial_filter(gamma, projection_params, filter_params)
+            
+            # Compute node strength
+            strength_alpha = np.sum(np.abs(alpha_rebuilded), axis=1)
+            strength_beta = np.sum(np.abs(beta_rebuilded), axis=1)
+            strength_gamma = np.sum(np.abs(gamma_rebuilded), axis=1)
+            
+            # Save for further analysis
+            functional_node_strength['alpha'].append(strength_alpha)
+            functional_node_strength['beta'].append(strength_beta)
+            functional_node_strength['gamma'].append(strength_gamma)
+    
+    # channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
+    channel_weights = {'gamma': np.mean(np.mean(functional_node_strength['gamma'], axis=0), axis=0),
+                       'beta': np.mean(np.mean(functional_node_strength['beta'], axis=0), axis=0),
+                       'alpha': np.mean(np.mean(functional_node_strength['alpha'], axis=0), axis=0)
+                       }
+    
+    k = {'gamma': int(len(channel_weights['gamma']) * selection_rate),
+         'beta': int(len(channel_weights['beta']) * selection_rate),
+         'alpha': int(len(channel_weights['alpha']) * selection_rate),
+          }
+    
+    channel_selects = {'gamma': np.argsort(channel_weights['gamma'])[-k['gamma']:][::-1],
+                       'beta': np.argsort(channel_weights['beta'])[-k['beta']:][::-1],
+                       'alpha': np.argsort(channel_weights['alpha'])[-k['alpha']:][::-1]
+                       }
+    
+    # for traning and testing in CNN
+    # labels
+    labels = utils_feature_loading.read_labels(dataset='seed')
+    y = torch.tensor(np.array(labels)).view(-1)
+    
+    # data and evaluation circle
+    all_results_list = []
+    for sub in subject_range:
+        for ex in experiment_range:
+            subject_id = f"sub{sub}ex{ex}"
+            print(f"Evaluating {subject_id}...")
+            
+            # CM/MAT
+            # features = utils_feature_loading.read_fcs_mat('seed', subject_id, feature_cm)
+            # alpha = features['alpha']
+            # beta = features['beta']
+            # gamma = features['gamma']
+
+            # CM/H5
+            features = utils_feature_loading.read_fcs('seed', subject_id, feature_cm)
+            alpha = features['alpha']
+            beta = features['beta']
+            gamma = features['gamma']
+
+            # RCM
+            alpha_rebuilded = spatial_gaussian_smoothing.fcs_spatial_filter(alpha, projection_params, filter_params)
+            beta_rebuilded = spatial_gaussian_smoothing.fcs_spatial_filter(beta, projection_params, filter_params)
+            gamma_rebuilded = spatial_gaussian_smoothing.fcs_spatial_filter(gamma, projection_params, filter_params)
+            
+            alpha_rebuilded = alpha_rebuilded[:,channel_selects['alpha'],:][:,:,channel_selects['alpha']]
+            beta_rebuilded = beta_rebuilded[:,channel_selects['beta'],:][:,:,channel_selects['beta']]
+            gamma_rebuilded = gamma_rebuilded[:,channel_selects['gamma'],:][:,:,channel_selects['gamma']]
+            
+            x_rebuilded = np.stack((alpha_rebuilded, beta_rebuilded, gamma_rebuilded), axis=1)
+            
+            # cnn model
+            cnn_model = models.CNN_2layers_adaptive_maxpool_3()
+            # traning and testing
+            result_RCM = cnn_validation.cnn_cross_validation(cnn_model, x_rebuilded, y)
+            
+            # Flatten result and add identifier
+            result_flat = {'Identifier': subject_id, **result_RCM}
+            all_results_list.append(result_flat)
+            
+    # Convert list of dicts to DataFrame
+    df_results = pd.DataFrame(all_results_list)
+    
+    # Compute mean of all numeric columns (excluding Identifier)
+    mean_row = df_results.select_dtypes(include=[np.number]).mean().to_dict()
+    mean_row['Identifier'] = 'Average'
+    df_results = pd.concat([df_results, pd.DataFrame([mean_row])], ignore_index=True)
+    
+    # Save
+    if save:
+        prj_type = projection_params.get('type')
+        computation = filter_params.get('computation')
+        sigma = filter_params.get('sigma')
+        lambda_reg = filter_params.get('lambda_reg')
+        
+        folder_name = 'results_cnn_subnetwork_evaluation'
+        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{prj_type}_{computation}_sigma_{sigma}_lamda_{lambda_reg}.xlsx'
+        sheet_name = f'{computation}_sr_{selection_rate}'
+        
+        save_to_xlsx_sheet(df_results, folder_name, file_name, sheet_name)
+
+    return df_results
+
+def cnn_subnetworks_evaluation_circle_laplacian_cm(projection_params={"source": "auto", "type": "3d_euclidean"},
+                                                   filtering_params={'computation': 'laplacian', 'lateral_mode': 'bilateral', 
+                                                                     'alpha': 0.1, 'normalized': False, 'reinforce': False},
+                                                 selection_rate=1, feature_cm='pcc', 
+                                                 subject_range=range(11,16), experiment_range=range(1,4), 
+                                                 save=False):
+    functional_node_strength = {
+        'alpha': [],
+        'beta': [],
+        'gamma': []
+    }
+    
+    for sub in subject_range:
+        for ex in experiment_range:
+            subject_id = f"sub{sub}ex{ex}"
+            print(f"Evaluating {subject_id}...")
+            
+            # CM/MAT
+            # features = utils_feature_loading.read_fcs_mat('seed', subject_id, feature_cm)
+            # alpha = features['alpha']
+            # beta = features['beta']
+            # gamma = features['gamma']
+
+            # CM/H5
+            features = utils_feature_loading.read_fcs('seed', subject_id, feature_cm)
+            alpha = features['alpha']
+            beta = features['beta']
+            gamma = features['gamma']
+
+            # RCM           
+            alpha_rebuilded = spatial_gaussian_smoothing.fcs_laplacian_geaph_filtering(alpha, projection_params, filtering_params)
+            beta_rebuilded = spatial_gaussian_smoothing.fcs_laplacian_geaph_filtering(beta, projection_params, filtering_params)
+            gamma_rebuilded = spatial_gaussian_smoothing.fcs_laplacian_geaph_filtering(gamma, projection_params, filtering_params)
+            
+            # Compute node strength
+            strength_alpha = np.sum(np.abs(alpha_rebuilded), axis=1)
+            strength_beta = np.sum(np.abs(beta_rebuilded), axis=1)
+            strength_gamma = np.sum(np.abs(gamma_rebuilded), axis=1)
+            
+            # Save for further analysis
+            functional_node_strength['alpha'].append(strength_alpha)
+            functional_node_strength['beta'].append(strength_beta)
+            functional_node_strength['gamma'].append(strength_gamma)
+    
+    # channel weights computed from the rebuilded connectivity matrix that constructed by vce modeling
+    channel_weights = {'gamma': np.mean(np.mean(functional_node_strength['gamma'], axis=0), axis=0),
+                       'beta': np.mean(np.mean(functional_node_strength['beta'], axis=0), axis=0),
+                       'alpha': np.mean(np.mean(functional_node_strength['alpha'], axis=0), axis=0)
+                       }
+    
+    k = {'gamma': int(len(channel_weights['gamma']) * selection_rate),
+         'beta': int(len(channel_weights['beta']) * selection_rate),
+         'alpha': int(len(channel_weights['alpha']) * selection_rate),
+          }
+    
+    channel_selects = {'gamma': np.argsort(channel_weights['gamma'])[-k['gamma']:][::-1],
+                       'beta': np.argsort(channel_weights['beta'])[-k['beta']:][::-1],
+                       'alpha': np.argsort(channel_weights['alpha'])[-k['alpha']:][::-1]
+                       }
+    
+    # for traning and testing in CNN
+    # labels
+    labels = utils_feature_loading.read_labels(dataset='seed')
+    y = torch.tensor(np.array(labels)).view(-1)
+    
+    # data and evaluation circle
+    all_results_list = []
+    for sub in subject_range:
+        for ex in experiment_range:
+            subject_id = f"sub{sub}ex{ex}"
+            print(f"Evaluating {subject_id}...")
+            
+            # CM/MAT
+            # features = utils_feature_loading.read_fcs_mat('seed', subject_id, feature_cm)
+            # alpha = features['alpha']
+            # beta = features['beta']
+            # gamma = features['gamma']
+
+            # CM/H5
+            features = utils_feature_loading.read_fcs('seed', subject_id, feature_cm)
+            alpha = features['alpha']
+            beta = features['beta']
+            gamma = features['gamma']
+
+            # RCM
+            alpha_rebuilded = spatial_gaussian_smoothing.fcs_laplacian_geaph_filtering(alpha, projection_params, filtering_params)
+            beta_rebuilded = spatial_gaussian_smoothing.fcs_laplacian_geaph_filtering(beta, projection_params, filtering_params)
+            gamma_rebuilded = spatial_gaussian_smoothing.fcs_laplacian_geaph_filtering(gamma, projection_params, filtering_params)
+            
+            alpha_rebuilded = alpha_rebuilded[:,channel_selects['alpha'],:][:,:,channel_selects['alpha']]
+            beta_rebuilded = beta_rebuilded[:,channel_selects['beta'],:][:,:,channel_selects['beta']]
+            gamma_rebuilded = gamma_rebuilded[:,channel_selects['gamma'],:][:,:,channel_selects['gamma']]
+            
+            x_rebuilded = np.stack((alpha_rebuilded, beta_rebuilded, gamma_rebuilded), axis=1)
+            
+            # cnn model
+            cnn_model = models.CNN_2layers_adaptive_maxpool_3()
+            # traning and testing
+            result_RCM = cnn_validation.cnn_cross_validation(cnn_model, x_rebuilded, y)
+            
+            # Flatten result and add identifier
+            result_flat = {'Identifier': subject_id, **result_RCM}
+            all_results_list.append(result_flat)
+            
+    # Convert list of dicts to DataFrame
+    df_results = pd.DataFrame(all_results_list)
+    
+    # Compute mean of all numeric columns (excluding Identifier)
+    mean_row = df_results.select_dtypes(include=[np.number]).mean().to_dict()
+    mean_row['Identifier'] = 'Average'
+    df_results = pd.concat([df_results, pd.DataFrame([mean_row])], ignore_index=True)
+    
+    # Save
+    if save:
+        prj_type = projection_params.get('type')
+        computation = filtering_params.get('computation')
+        alpha = filtering_params.get('alpha')
+        
+        folder_name = 'results_cnn_subnetwork_evaluation'
+        file_name = f'cnn_validation_SubRCM_{feature_cm}_by_{prj_type}_{computation}_alpha_{alpha}.xlsx'
+        sheet_name = f'{computation}_sr_{selection_rate}'
+        
+        save_to_xlsx_sheet(df_results, folder_name, file_name, sheet_name)
+
+    return df_results
+
+def cnn_subnetworks_evaluation_circle_rebuilt_cm_(projection_params={"source": "auto", "type": "3d_euclidean"},
                                                  filtering_type={'residual_type': 'origin', 'lateral_mode': 'bilateral'},
                                                  filtering_params={'sigma': 0.125, 'gamma': 0.25, 'lambda_reg': 0.25, 'reinforce': False},
                                                  selection_rate=1, feature_cm='pcc', 
@@ -353,18 +603,20 @@ def parameters_optimization():
 if __name__ == '__main__':
     selection_rate_list = [1.0, 0.75, 0.5, 0.3, 0.2, 0.1, 0.05]
     
+    # optimized parameters
     sigma, lamda = 0.1, 0.01
     
-    for selection_rate in selection_rate_list:      
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'origin'},
-                                                     filtering_params={'sigma': sigma, 'lambda_reg': lamda, 'reinforce': False},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+    for selection_rate in selection_rate_list:
+        # cnn_subnetworks_evaluation_circle_original_cm(selection_rate=selection_rate, feature_cm='pli', save=True)
         
-        cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                     filtering_type={'residual_type': 'pseudoinverse'},
-                                                     filtering_params={'sigma': sigma, 'lambda_reg': lamda, 'reinforce': False},
-                                                     selection_rate=selection_rate, feature_cm='pcc', save=True)
+        # cnn_subnetworks_evaluation_circle_rebuilt_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+        #                                              filter_params={'computation': 'pseudoinverse', 'lateral_mode': 'bilateral',
+        #                                                             'sigma': 0.1, 'lambda_reg': 0.01, 'reinforce': False},
+        #                                              selection_rate=selection_rate, feature_cm='plv', save=True)
+        
+        cnn_subnetworks_evaluation_circle_laplacian_cm(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                       filtering_params={'alpha': 0.1, 'normalized': False, 'reinforce': False},
+                                                       selection_rate=selection_rate, feature_cm='pcc', save=True)
 
     # %% End
     from cnn_val_circle import end_program_actions
