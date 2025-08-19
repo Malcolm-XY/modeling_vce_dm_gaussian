@@ -11,7 +11,6 @@ import feature_engineering
 from utils import utils_feature_loading
 from utils import utils_visualization
 
-from scipy.spatial.distance import cdist
 # %% gaussian filtering
 def spatial_gaussian_smoothing_on_vector(A, distance_matrix, sigma):
     dists = distance_matrix
@@ -73,7 +72,7 @@ def spatial_gaussian_smoothing_on_fc_matrix(A, distance_matrix, sigma=None, late
     
     return A_smooth
 
-def fcs_gaussian_filtering(fcs, projection_params={"source": "auto", "type": "3d"}, lateral='bilateral', sigma=0.05):
+def fcs_gaussian_filtering(fcs, projection_params={"source": "auto", "type": "3d_spherical"}, lateral='bilateral', sigma=0.05):
     """
     projection_params:
         "source": "auto", or "manual"
@@ -90,7 +89,7 @@ def fcs_gaussian_filtering(fcs, projection_params={"source": "auto", "type": "3d
     
     return fcs
 
-def cfs_gaussian_filtering(cfs, projection_params={"source": "auto", "type": "3d"}, lateral='bilateral', sigma=0.05):
+def cfs_gaussian_filtering(cfs, projection_params={"source": "auto", "type": "3d_spherical"}, lateral='bilateral', sigma=0.05):
     """
     projection_params:
         "source": "auto", or "manual"
@@ -107,11 +106,12 @@ def cfs_gaussian_filtering(cfs, projection_params={"source": "auto", "type": "3d
     
     return cfs
 
-# %% spatial filtering
-def apply_spatial_filter(matrix, distance_matrix, 
-                         filter_params={'computation': 'gaussian', 'lateral_mode': 'bilateral',
-                                 'sigma': None, 'lambda_reg': None, 'reinforce': False}, 
-                         visualize=False):
+# %% apply filters
+def apply_gaussian_filter(matrix, distance_matrix, 
+                          filtering_params={'computation': 'gaussian_filter',
+                                            'sigma': 0.1, 
+                                            'lateral_mode': 'bilateral', 'reinforce': False}, 
+                          visualize=False):
     """
     Applies a spatial residual filter to a functional connectivity (FC) matrix
     to suppress local spatial redundancy (e.g., volume conduction effects).
@@ -125,174 +125,6 @@ def apply_spatial_filter(matrix, distance_matrix,
     params : dict
         Filtering parameters:
             - 'sigma': float, spatial Gaussian kernel width. If None, uses mean of non-zero distances.
-            - 'gamma': float, residual scaling for 'residual' mode. Default 0.25.
-            - 'lambda_reg': float, regularization term for pseudoinverse mode.
-    computation : str
-        One of ['origin', 'residual', 'residual_mean', 'inverse', 'pseudoinverse'].
-    lateral_mode : str
-        'bilateral' (K @ M @ K.T) or 'unilateral' (K @ M).
-    visualize : bool
-        If True, visualize before and after matrices.
-
-    Returns
-    -------
-    filtered_matrix : np.ndarray
-        Filtered connectivity matrix.
-    """
-
-    if visualize:
-        try:
-            utils_visualization.draw_projection(matrix, 'Before Spatial Filtering')
-        except ModuleNotFoundError:
-            print("Visualization module not found.")
-            
-    computation = filter_params.get('computation', 'gaussian')
-    lateral_mode = filter_params.get('lateral_mode', 'bilateral')
-    sigma = filter_params.get('sigma', 0.1)
-    lambda_reg = filter_params.get('lambda_reg', 0.01)
-
-    if sigma is None:
-        sigma = np.mean(distance_matrix[distance_matrix > 0])
-
-    # Avoid zero distances
-    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
-
-    # Step 1: Construct Gaussian kernel (SM)
-    gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
-    gaussian_kernel /= gaussian_kernel.sum(axis=1, keepdims=True)
-
-    # Step 2: Construct residual kernel
-    if computation == 'origin':
-        return matrix
-    
-    elif computation == 'gaussian':
-        residual_kernel = gaussian_kernel
-
-    elif computation == 'pseudoinverse':
-        # Use Tikhonov regularized inverse
-        I = np.eye(gaussian_kernel.shape[0])
-        G = gaussian_kernel
-        try:
-            residual_kernel = np.linalg.inv(G.T @ G + lambda_reg * I) @ G.T
-        except np.linalg.LinAlgError:
-            print('LinAlgError')
-            residual_kernel = np.linalg.pinv(G)
-
-    elif computation == 'wiener':
-        # Construct Wiener-like inverse filter: G.T @ (G G.T + λI)^(-1)
-        G = gaussian_kernel
-        I = np.eye(G.shape[0])
-        try:
-            inverse_term = np.linalg.inv(G @ G.T + lambda_reg * I)
-        except np.linalg.LinAlgError:
-            print("Warning: Matrix inversion failed, falling back to pinv.")
-            inverse_term = np.linalg.pinv(G @ G.T + lambda_reg * I)
-        residual_kernel = G.T @ inverse_term  # Shape: (N, N)
-
-    else:
-        raise ValueError(f"Unknown computation: {computation}")
-
-    # Step 3: Apply filtering
-    if lateral_mode == 'bilateral':
-        filtered_matrix = residual_kernel @ matrix @ residual_kernel.T
-    elif lateral_mode == 'unilateral':
-        filtered_matrix = residual_kernel @ matrix
-    else:
-        raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
-    
-    # Step 4: Reinforce
-    if filter_params.get('reinforce', False):
-        filtered_matrix += matrix
-    
-    if visualize:
-        try:
-            utils_visualization.draw_projection(filtered_matrix, 'After Spatial Filtering')
-        except ModuleNotFoundError:
-            print("Visualization module not found.")
-
-    return filtered_matrix
-
-def fcs_spatial_filter(fcs,
-                       projection_params={"source": "auto", "type": "3d_euclidean"},
-                       filter_params={'computation': 'gaussian', 'lateral_mode': 'bilateral',
-                                      'sigma': None, 'lambda_reg': None, 'reinforce': False},
-                       visualize=False):
-    """
-    Applies spatial residual filtering to a list/array of functional connectivity matrices (FCs),
-    using a Gaussian-based distance kernel and selected residual strategy.
-
-    Parameters
-    ----------
-    fcs : list or np.ndarray of shape (N, C, C)
-        A list or array of N functional connectivity matrices (each C x C).
-
-    projection_params : dict
-        Parameters for computing the spatial projection (distance matrix), passed to `compute_distance_matrix`.
-            - "source": "auto" or "manual"
-            - "type": "2d", "3d", or "stereo"
-
-    filtering_params : dict
-        Parameters for Gaussian filtering and inverse/residual construction.
-            - 'sigma': float or None, spatial kernel width (if None, uses mean non-zero distance)
-            - 'gamma': float, strength for residual subtraction (used in 'residual')
-            - 'lambda_reg': float, regularization term for pseudoinverse/Wiener filters
-
-    residual_type : str
-        One of ['origin', 'residual', 'residual_mean', 'inverse', 'pseudoinverse', 'wiener', 'laplacian_power'].
-        Determines how the spatial kernel is transformed into a residual/inverse form.
-
-    lateral_mode : str
-        Either 'bilateral' (K @ M @ K.T) or 'unilateral' (K @ M). Controls how kernel is applied.
-
-    visualize : bool
-        Whether to visualize each FC matrix before and after filtering.
-
-    Returns
-    -------
-    fcs_filtered : np.ndarray of shape (N, C, C)
-        Stack of filtered FC matrices.
-    """
-    # Step 1: Compute spatial distance matrix
-    _, distance_matrix = feature_engineering.compute_distance_matrix('seed', projection_params=projection_params)
-    distance_matrix = feature_engineering.normalize_matrix(distance_matrix)
-
-    # Step 2: Apply filtering to each FC matrix    
-    fcs_filtered = []
-    for fc in fcs:
-        filtered = apply_spatial_filter(matrix=fc, distance_matrix=distance_matrix, 
-                                 filter_params=filter_params, 
-                                 visualize=False)
-
-        fcs_filtered.append(filtered)
-    
-    if visualize:
-        average = np.mean(fcs_filtered, axis=0)
-        utils_visualization.draw_projection(average)
-        
-    return np.stack(fcs_filtered)
-
-# %% -------------spare codes
-def apply_spatial_residual_filter_(matrix, distance_matrix, 
-                                  residual_type='residual', lateral_mode='bilateral', 
-                                  params={'sigma': None, 'gamma': None, 'lambda_reg': None, 'reinforce': False}, 
-                                  visualize=False):
-    """
-    Applies a spatial residual filter to a functional connectivity (FC) matrix
-    to suppress local spatial redundancy (e.g., volume conduction effects).
-
-    Parameters
-    ----------
-    matrix : np.ndarray, shape (N, N)
-        Input functional connectivity matrix.
-    distance_matrix : np.ndarray, shape (N, N)
-        Pairwise distance matrix between channels.
-    params : dict
-        Filtering parameters:
-            - 'sigma': float, spatial Gaussian kernel width. If None, uses mean of non-zero distances.
-            - 'gamma': float, residual scaling for 'residual' mode. Default 0.25.
-            - 'lambda_reg': float, regularization term for pseudoinverse mode.
-    residual_type : str
-        One of ['origin', 'residual', 'residual_mean', 'inverse', 'pseudoinverse'].
     lateral_mode : str
         'bilateral' (K @ M @ K.T) or 'unilateral' (K @ M).
     visualize : bool
@@ -310,12 +142,8 @@ def apply_spatial_residual_filter_(matrix, distance_matrix,
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
-    sigma = params.get('sigma', 0.1)
-    gamma = params.get('gamma', 0.1)
-    lambda_reg = params.get('lambda_reg', 0.1)
-
-    if sigma is None:
-        sigma = np.mean(distance_matrix[distance_matrix > 0])
+    lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
+    sigma = filtering_params.get('sigma', 0.1)
 
     # Avoid zero distances
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
@@ -324,61 +152,16 @@ def apply_spatial_residual_filter_(matrix, distance_matrix,
     gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
     gaussian_kernel /= gaussian_kernel.sum(axis=1, keepdims=True)
 
-    # Step 2: Construct residual kernel
-    if residual_type == 'origin':
-        return matrix
-    
-    elif residual_type == 'gaussian':
-        residual_kernel = gaussian_kernel
-    
-    elif residual_type == 'residual':
-        residual_kernel = 1.0 - gamma * gaussian_kernel
-        residual_kernel = np.maximum(residual_kernel, 0)
-        residual_kernel /= residual_kernel.sum(axis=1, keepdims=True)
-
-    elif residual_type == 'residual_mean':
-        row_mean = np.mean(gaussian_kernel, axis=1, keepdims=True)
-        residual_kernel = -(gaussian_kernel - row_mean) + row_mean
-        residual_kernel /= residual_kernel.sum(axis=1, keepdims=True)
-
-    elif residual_type == 'inverse':
-        residual_kernel = 1.0 / (gaussian_kernel + 1e-6)
-        residual_kernel /= residual_kernel.sum(axis=1, keepdims=True)
-
-    elif residual_type == 'pseudoinverse':
-        # Use Tikhonov regularized inverse
-        I = np.eye(gaussian_kernel.shape[0])
-        G = gaussian_kernel
-        try:
-            residual_kernel = np.linalg.inv(G.T @ G + lambda_reg * I) @ G.T
-        except np.linalg.LinAlgError:
-            print('LinAlgError')
-            residual_kernel = np.linalg.pinv(G)
-
-    elif residual_type == 'wiener':
-        # Construct Wiener-like inverse filter: G.T @ (G G.T + λI)^(-1)
-        G = gaussian_kernel
-        I = np.eye(G.shape[0])
-        try:
-            inverse_term = np.linalg.inv(G @ G.T + lambda_reg * I)
-        except np.linalg.LinAlgError:
-            print("Warning: Matrix inversion failed, falling back to pinv.")
-            inverse_term = np.linalg.pinv(G @ G.T + lambda_reg * I)
-        residual_kernel = G.T @ inverse_term  # Shape: (N, N)
-
-    else:
-        raise ValueError(f"Unknown residual_type: {residual_type}")
-
-    # Step 3: Apply filtering
+    # Step 2: Apply filtering
     if lateral_mode == 'bilateral':
-        filtered_matrix = residual_kernel @ matrix @ residual_kernel.T
+        filtered_matrix = gaussian_kernel @ matrix @ gaussian_kernel.T
     elif lateral_mode == 'unilateral':
-        filtered_matrix = residual_kernel @ matrix
+        filtered_matrix = gaussian_kernel @ matrix
     else:
         raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
     
     # Step 4: Reinforce
-    if params.get('reinforce', False):
+    if filtering_params.get('reinforce', False):
         filtered_matrix += matrix
     
     if visualize:
@@ -389,107 +172,108 @@ def apply_spatial_residual_filter_(matrix, distance_matrix,
 
     return filtered_matrix
 
-def fcs_residual_filtering_(fcs,
-                           projection_params={"source": "auto", "type": "3d_spherical"},
-                           residual_type='residual', lateral_mode='bilateral',
-                           filtering_params={'sigma': None, 'gamma': None, 'lambda_reg': None, 'reinforce': False}, 
-                           visualize=False):
+# gaussian diffusion inverse filtering: proposed method
+def apply_diffusion_inverse(matrix, distance_matrix, 
+                            filtering_params={'computation': 'diffusion_inverse',
+                                              'sigma': 0.1, 'lambda_reg': 0.01,
+                                              'lateral_mode': 'bilateral', 'reinforce': False}, 
+                            visualize=False):
     """
-    Applies spatial residual filtering to a list/array of functional connectivity matrices (FCs),
-    using a Gaussian-based distance kernel and selected residual strategy.
-
-    Parameters
-    ----------
-    fcs : list or np.ndarray of shape (N, C, C)
-        A list or array of N functional connectivity matrices (each C x C).
-
-    projection_params : dict
-        Parameters for computing the spatial projection (distance matrix), passed to `compute_distance_matrix`.
-            - "source": "auto" or "manual"
-            - "type": "2d", "3d", or "stereo"
-
-    filtering_params : dict
-        Parameters for Gaussian filtering and inverse/residual construction.
-            - 'sigma': float or None, spatial kernel width (if None, uses mean non-zero distance)
-            - 'gamma': float, strength for residual subtraction (used in 'residual')
-            - 'lambda_reg': float, regularization term for pseudoinverse/Wiener filters
-
-    residual_type : str
-        One of ['origin', 'residual', 'residual_mean', 'inverse', 'pseudoinverse', 'wiener', 'laplacian_power'].
-        Determines how the spatial kernel is transformed into a residual/inverse form.
-
-    lateral_mode : str
-        Either 'bilateral' (K @ M @ K.T) or 'unilateral' (K @ M). Controls how kernel is applied.
-
-    visualize : bool
-        Whether to visualize each FC matrix before and after filtering.
-
-    Returns
-    -------
-    fcs_filtered : np.ndarray of shape (N, C, C)
-        Stack of filtered FC matrices.
-    """
-    # Step 1: Compute spatial distance matrix
-    _, distance_matrix = feature_engineering.compute_distance_matrix('seed', projection_params=projection_params)
-    distance_matrix = feature_engineering.normalize_matrix(distance_matrix)
-
-    # Step 2: Apply filtering to each FC matrix
-    fcs_filtered = []
-    for fc in fcs:
-        filtered = apply_spatial_residual_filter(matrix=fc, distance_matrix=distance_matrix,
-                                                 residual_type=residual_type,lateral_mode=lateral_mode,
-                                                 params=filtering_params)
-        fcs_filtered.append(filtered)
-    
-    if visualize:
-        average = np.mean(fcs_filtered, axis=0)
-        utils_visualization.draw_projection(average)
-        
-    return np.stack(fcs_filtered)
-
-# %% laplacian graph filtering
-def apply_laplacian_filter(matrix, distance_matrix, 
-                           filtering_params={'alpha': 0.1, 'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False},
-                           visualize=False):
-    """
-    Applies a Laplacian-based spatial filter to a functional connectivity matrix to suppress
-    volume conduction effects by enhancing spatial differences (high-pass filtering).
+    Applies a spatial residual filter to a functional connectivity (FC) matrix
+    to suppress local spatial redundancy (e.g., volume conduction effects).
 
     Parameters
     ----------
     matrix : np.ndarray, shape (N, N)
-        Input functional connectivity matrix (e.g., PCC or PLV).
+        Input functional connectivity matrix.
     distance_matrix : np.ndarray, shape (N, N)
-        Pairwise spatial distances between EEG channels.
-    alpha : float
-        Filtering strength (0 < alpha < 1). Controls how much Laplacian is applied.
-    normalized : bool
-        If True, use normalized Laplacian; otherwise use unnormalized Laplacian.
+        Pairwise distance matrix between channels.
+    params : dict
+        Filtering parameters:
+            - 'sigma': float, spatial Gaussian kernel width. If None, uses mean of non-zero distances.
+            - 'lambda_reg': float, regularization term for pseudoinverse mode.
     lateral_mode : str
-        'bilateral' (L @ M @ L.T) or 'unilateral' (L @ M).
-    reinforce : bool
-        If True, adds original matrix back to filtered result (residual enhancement).
+        'bilateral' (K @ M @ K.T) or 'unilateral' (K @ M).
     visualize : bool
-        If True, show pre- and post-filter visualization.
+        If True, visualize before and after matrices.
 
     Returns
     -------
     filtered_matrix : np.ndarray
-        The Laplacian-filtered functional connectivity matrix.
+        Filtered connectivity matrix.
     """
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before Spatial Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
+    sigma = filtering_params.get('sigma', 0.1)
+    lambda_reg = filtering_params.get('lambda_reg', 0.01)
+
+    # Avoid zero distances
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+
+    # Step 1: Construct Gaussian kernel (SM)
+    gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+    gaussian_kernel /= gaussian_kernel.sum(axis=1, keepdims=True)
+
+    # Step 2: Construct residual kernel
+    # Use Tikhonov regularized inverse
+    I = np.eye(gaussian_kernel.shape[0])
+    G = gaussian_kernel
+    try:
+        residual_kernel = np.linalg.inv(G.T @ G + lambda_reg * I) @ G.T
+    except np.linalg.LinAlgError:
+        print('LinAlgError')
+        residual_kernel = np.linalg.pinv(G)
+
+    # Step 3: Apply filtering
+    if lateral_mode == 'bilateral':
+        filtered_matrix = residual_kernel @ matrix @ residual_kernel.T
+    elif lateral_mode == 'unilateral':
+        filtered_matrix = residual_kernel @ matrix
+    else:
+        raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
+    
+    # Step 4: Reinforce
+    if filtering_params.get('reinforce', False):
+        filtered_matrix += matrix
+    
+    if visualize:
+        try:
+            utils_visualization.draw_projection(filtered_matrix, 'After Spatial Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return filtered_matrix
+
+# laplacian graph filtering
+def apply_graph_laplacian_filter(matrix, distance_matrix,
+                                 filtering_params={'computation': 'graph_laplacian',
+                                                   'alpha': 0.1,
+                                                   'sigma': None,  # 新增
+                                                   'lateral_mode': 'bilateral',
+                                                   'normalized': False,
+                                                   'reinforce': False},
+                                 visualize=False):
+    """
+    ...
+    sigma : float or None
+        高斯核的尺度参数。如果为 None，则默认取非零距离的均值。
+    """
+
     alpha = filtering_params.get('alpha', 0.1)
+    sigma = filtering_params.get('sigma', None)  # 取出用户自定义 sigma
     lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
     normalized = filtering_params.get('normalized', False)
     reinforce = filtering_params.get('reinforce', False)
 
-    if visualize:
-        try:
-            utils_visualization.draw_projection(matrix, 'Before Laplacian Filtering')
-        except ModuleNotFoundError:
-            print("Visualization module not found.")
-
     # Step 1: Construct adjacency matrix W (Gaussian kernel)
-    sigma = np.mean(distance_matrix[distance_matrix > 0])
+    if sigma is None:
+        sigma = np.mean(distance_matrix[distance_matrix > 0])
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
     W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
 
@@ -517,38 +301,384 @@ def apply_laplacian_filter(matrix, distance_matrix,
     if reinforce:
         filtered_matrix += matrix
 
+    return filtered_matrix
+
+# graph laplacian denoising
+def apply_graph_laplacian_denoising(matrix, distance_matrix,
+                                    filtering_params={'computation': 'graph_laplacian_denoising',
+                                                      'cutoff_rank': 5,
+                                                      'normalized': False, 'reinforce': False},
+                                    visualize=False):
+    """
+    Applies Graph Laplacian Denoising to a functional connectivity matrix by removing
+    low-frequency components in the graph spectral domain (i.e., spatially smooth structures).
+
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix (e.g., PCC or PLV).
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise spatial distances between EEG channels.
+    cutoff_rank : int
+        Number of lowest-frequency graph modes to remove (i.e., spectral truncation level).
+    normalized : bool
+        If True, use normalized Laplacian; otherwise use unnormalized Laplacian.
+    reinforce : bool
+        If True, adds original matrix back to filtered result (residual enhancement).
+    visualize : bool
+        If True, show pre- and post-filter visualization.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray
+        The denoised functional connectivity matrix.
+    """
+    cutoff_rank = filtering_params.get('cutoff_rank', 5)
+    normalized = filtering_params.get('normalized', False)
+    reinforce = filtering_params.get('reinforce', False)
+
     if visualize:
         try:
-            utils_visualization.draw_projection(filtered_matrix, 'After Laplacian Filtering')
+            utils_visualization.draw_projection(matrix, 'Before Graph Laplacian Denoising')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    # Step 1: Construct adjacency matrix W (Gaussian kernel)
+    sigma = np.mean(distance_matrix[distance_matrix > 0])
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+
+    # Step 2: Compute Laplacian matrix L
+    D = np.diag(W.sum(axis=1))
+    if normalized:
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
+        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
+    else:
+        L = D - W
+
+    # Step 3: Eigen-decomposition of L
+    eigenvalues, eigenvectors = np.linalg.eigh(L)  # L symmetric => use eigh
+    # Sort eigenvalues/eigenvectors from low to high freq
+    idx = np.argsort(eigenvalues)
+    eigenvectors = eigenvectors[:, idx]
+    eigenvalues = eigenvalues[idx]
+
+    # Step 4: Construct projection matrix to remove low frequencies
+    U_low = eigenvectors[:, :cutoff_rank]  # Low-frequency basis
+    P_low = U_low @ U_low.T               # Projector onto low-frequency subspace
+
+    # Step 5: Filter matrix by removing smooth components
+    filtered_matrix = (np.eye(matrix.shape[0]) - P_low) @ matrix @ (np.eye(matrix.shape[0]) - P_low.T)
+
+    # Step 6: Optional residual reinforcement
+    if reinforce:
+        filtered_matrix += matrix
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(filtered_matrix, 'After Graph Laplacian Denoising')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
     return filtered_matrix
 
-def fcs_laplacian_geaph_filtering(fcs,
-                           projection_params={"source": "auto", "type": "3d_euclidean"},
-                           filtering_params={'alpha': 0.1, 'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}, 
-                           visualize=False):
+# graph tikhonov inverse
+from scipy.sparse.linalg import cg
+from scipy.sparse import identity, kron, csc_matrix
+def apply_graph_tikhonov_inverse(matrix, distance_matrix,
+                                 filtering_params={'computation': 'graph_tikhonov_inverse',
+                                                   'alpha': 0.1, 'lambda': 1e-2,
+                                                   'normalized': False, 'reinforce': False},
+                                 visualize=False):
+    """
+    Applies Graph Tikhonov Inverse Filtering to estimate the true functional connectivity matrix
+    from an observed matrix, based on a diffusion model and smoothness regularization.
 
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input observed functional connectivity matrix (FN_obs).
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise spatial distances between EEG channels.
+    alpha : float
+        Diffusion parameter in filter matrix G = I - alpha * L.
+    lambda : float
+        Regularization strength (controls how much smoothness is penalized).
+    normalized : bool
+        Whether to use normalized Laplacian.
+    reinforce : bool
+        If True, adds original matrix back to filtered result.
+    visualize : bool
+        If True, show pre- and post-filter visualization.
+
+    Returns
+    -------
+    estimated_matrix : np.ndarray
+        Estimated FN_true after Tikhonov-regularized inverse filtering.
+    """
+    alpha = filtering_params.get('alpha', 0.1)
+    lam = filtering_params.get('lambda', 1e-2)
+    normalized = filtering_params.get('normalized', False)
+    reinforce = filtering_params.get('reinforce', False)
+
+    # Step 1: 构造高斯核权重矩阵 W
+    sigma = np.mean(distance_matrix[distance_matrix > 0])
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+
+    # Step 2: 计算拉普拉斯矩阵 L
+    D = np.diag(W.sum(axis=1))
+    if normalized:
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
+        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
+    else:
+        L = D - W
+
+    # Step 3: 构造滤波矩阵 G = I - alpha * L
+    I = np.eye(W.shape[0])
+    G = I - alpha * L
+
+    # 若需要可视化
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before Graph Tikhonov Inverse (Simplified)')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    # 构造右侧项 M_G = G^T M G
+    M_G = G.T @ matrix @ G
+
+    # 计算 A = Kron(GTG, GTG) + lambda * I
+    GTG = G.T @ G
+    N = GTG.shape[0]
+    # 注意：这里使用稀疏矩阵以节省计算资源
+    GTG_sparse = csc_matrix(GTG)
+    A_kron = kron(GTG_sparse, GTG_sparse)
+    I_big = identity(N * N, format='csc')
+    A = A_kron + lam * I_big
+
+    # 构造右侧向量 b = vec(M_G)
+    b = M_G.flatten()
+
+    # 使用共轭梯度法求解稀疏线性系统
+    x, info = cg(A, b, rtol=1e-6, maxiter=1000)
+    if info != 0:
+        print("共轭梯度法未能完全收敛：info =", info)
+
+    # 重构回矩阵 X
+    estimated_matrix = x.reshape(matrix.shape)
+
+    if reinforce:
+        estimated_matrix += matrix
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(estimated_matrix, 'After Graph Tikhonov Inverse (Simplified)')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return estimated_matrix
+
+# spectral graph filtering
+def apply_spectral_graph_filtering(matrix, distance_matrix,
+                                   filtering_params={'computation': 'spectral_graph_filtering', 
+                                                     't': 10, 
+                                                     'normalized': False, 'reinforce': False},
+                                   visualize=False):
+    """
+    Applies spectral graph filtering (high-pass) to a functional connectivity matrix
+    by attenuating low-frequency components in the graph Laplacian spectrum.
+
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix (e.g., PCC or PLV).
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise spatial distances between EEG channels.
+    t : float
+        Controls the strength of filtering; larger t suppresses low frequencies more.
+    normalized : bool
+        If True, use normalized Laplacian; otherwise unnormalized.
+    reinforce : bool
+        If True, adds original matrix back to filtered result.
+    visualize : bool
+        If True, show pre- and post-filter visualization.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray
+        The spectrally filtered functional connectivity matrix.
+    """
+    t = filtering_params.get('t', 10)
+    normalized = filtering_params.get('normalized', False)
+    reinforce = filtering_params.get('reinforce', False)
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before Spectral Graph Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    # Step 1: Construct adjacency matrix W (Gaussian kernel)
+    sigma = np.mean(distance_matrix[distance_matrix > 0])
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+
+    # Step 2: Compute Laplacian matrix L
+    D = np.diag(W.sum(axis=1))
+    if normalized:
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
+        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
+    else:
+        L = D - W
+
+    # Step 3: Spectral decomposition of L
+    eigenvalues, eigenvectors = np.linalg.eigh(L)
+    idx = np.argsort(eigenvalues)
+    eigenvalues = eigenvalues[idx]
+    eigenvectors = eigenvectors[:, idx]
+
+    # Step 4: Construct high-pass filter h(λ) = 1 - exp(-t * λ)
+    h_lambda = 1 - np.exp(-t * eigenvalues)
+    H = eigenvectors @ np.diag(h_lambda) @ eigenvectors.T
+
+    # Step 5: Filter matrix: apply H on both sides
+    filtered_matrix = H @ matrix @ H.T
+
+    # Step 6: Optional residual reinforcement
+    if reinforce:
+        filtered_matrix += matrix
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(filtered_matrix, 'After Spectral Graph Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return filtered_matrix
+
+# %% aplly filters on fcs
+def fcs_filtering_common(fcs,
+                         projection_params={"source": "auto", "type": "3d_spherical"},
+                         filtering_params={}, 
+                         apply_filter='diffusion_inverse',
+                         visualize=False):
+    # valid filters
+    filters_valid={'gaussian_filtering', 
+                   'diffusion_inverse', 
+                   'graph_laplacian', 'graph_laplacian_denoising',
+                   'graph_tikhonov_inverse', 'spectral_graph_filtering'}
+    
+    # default parameteres
+    filtering_params_gaussian_filtering={'computation': 'gaussian_filtering',
+                                         'sigma': 0.1, 
+                                         'lateral_mode': 'bilateral', 'reinforce': False}
+    
+    filtering_params_diffusion_inverse={'computation': 'diffusion_inverse',
+                                        'sigma': 0.1, 'lambda_reg': 0.01,
+                                        'lateral_mode': 'bilateral', 'reinforce': False}
+    
+    filtering_params_graph_laplacian={'computation': 'graph_laplacian',
+                                      'alpha': 0.1, 'sigma': None,
+                                      'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}
+    
+    filtering_params_graph_laplacian_denoising={'computation': 'graph_laplacian_denoising',
+                                                'cutoff_rank': 5,
+                                                'normalized': False, 'reinforce': False}
+    
+    filtering_params_graph_tikhonov_inverse={'computation': 'graph_tikhonov_inverse',
+                                             'alpha': 0.1, 'lambda': 1e-2,
+                                             'normalized': False, 'reinforce': False}
+    
+    filtering_params_spectral_graph_filtering={'computation': 'spectral_graph_filtering', 
+                      't': 10, 
+                      'normalized': False, 'reinforce': False}
+    
     # Step 1: Compute spatial distance matrix
     _, distance_matrix = feature_engineering.compute_distance_matrix('seed', projection_params=projection_params)
     distance_matrix = feature_engineering.normalize_matrix(distance_matrix)
 
     # Step 2: Apply filtering to each FC matrix
-    fcs_filtered = []
-    for fc in fcs:
-        filtered = apply_laplacian_filter(matrix=fc, distance_matrix=distance_matrix, 
-                                          filtering_params=filtering_params,
-                                          visualize=False)
-
-        fcs_filtered.append(filtered)
-    
-    if visualize:
-        average = np.mean(fcs_filtered, axis=0)
-        utils_visualization.draw_projection(average)
+    if fcs.ndim == 2:
+        if apply_filter=='gaussian_filtering':
+            fcs_filtered = apply_gaussian_filter(matrix=fcs, distance_matrix=distance_matrix, 
+                                                 filtering_params=filtering_params,
+                                                 visualize=False)
+            
+        elif apply_filter=='diffusion_inverse':
+            fcs_filtered = apply_diffusion_inverse(matrix=fcs, distance_matrix=distance_matrix, 
+                                                   filtering_params=filtering_params,
+                                                   visualize=False)
+        elif apply_filter=='graph_laplacian':
+            fcs_filtered=apply_graph_laplacian_filter(matrix=fcs, distance_matrix=distance_matrix, 
+                                                      filtering_params=filtering_params,
+                                                      visualize=False)
+        elif apply_filter=='graph_laplacian_denoising':
+            fcs_filtered=apply_graph_laplacian_denoising(matrix=fcs, distance_matrix=distance_matrix, 
+                                                         filtering_params=filtering_params,
+                                                         visualize=False)
+        elif apply_filter=='graph_tikhonov_inverse':
+            fcs_filtered=apply_graph_tikhonov_inverse(matrix=fcs, distance_matrix=distance_matrix, 
+                                                      filtering_params=filtering_params,
+                                                      visualize=False)
+        elif apply_filter=='spectral_graph_filtering':
+            fcs_filtered=apply_spectral_graph_filtering(matrix=fcs, distance_matrix=distance_matrix, 
+                                                      filtering_params=filtering_params,
+                                                      visualize=False)
+        
+        if visualize:
+            utils_visualization.draw_projection(fcs_filtered)
+        
+    elif fcs.ndim == 3:
+        fcs_filtered = []
+        if apply_filter=='gaussian_filtering':
+            for fc in fcs:
+                filtered = apply_gaussian_filter(matrix=fc, distance_matrix=distance_matrix, 
+                                                 filtering_params=filtering_params,
+                                                 visualize=False)
+                fcs_filtered.append(filtered)
+                
+        elif apply_filter=='diffusion_inverse':
+            for fc in fcs:
+                filtered = apply_diffusion_inverse(matrix=fc, distance_matrix=distance_matrix, 
+                                                   filtering_params=filtering_params,
+                                                   visualize=False)
+                fcs_filtered.append(filtered)
+                
+        elif apply_filter=='graph_laplacian':
+            for fc in fcs:
+                filtered = apply_graph_laplacian_filter(matrix=fc, distance_matrix=distance_matrix, 
+                                                        filtering_params=filtering_params,
+                                                        visualize=False)
+                fcs_filtered.append(filtered)
+                
+        elif apply_filter=='graph_laplacian_denoising':
+            for fc in fcs:
+                filtered = apply_graph_laplacian_denoising(matrix=fc, distance_matrix=distance_matrix, 
+                                                           filtering_params=filtering_params,
+                                                           visualize=False)
+                fcs_filtered.append(filtered)
+                
+        elif apply_filter=='graph_tikhonov_inverse':
+            for fc in fcs:
+                filtered = apply_graph_tikhonov_inverse(matrix=fc, distance_matrix=distance_matrix, 
+                                                        filtering_params=filtering_params,
+                                                        visualize=False)
+                fcs_filtered.append(filtered)
+        
+        elif apply_filter=='spectral_graph_filtering':
+            for fc in fcs:
+                filtered = apply_spectral_graph_filtering(matrix=fc, distance_matrix=distance_matrix, 
+                                                              filtering_params=filtering_params,
+                                                              visualize=False)
+                fcs_filtered.append(filtered)
+        
+        if visualize:
+            average = np.mean(fcs_filtered, axis=0)
+            utils_visualization.draw_projection(average)
         
     return np.stack(fcs_filtered)
-    
+
 # %% Usage
 if __name__ == '__main__':
     # electrodes = utils_feature_loading.read_distribution('seed')['channel']
@@ -573,32 +703,71 @@ if __name__ == '__main__':
     
     # %% Connectivity Matrix
     # get sample and visualize sample
-    sample = utils_feature_loading.read_fcs_mat(dataset='seed', identifier='sub1ex1', feature='pcc')['gamma']
-    sample_average = np.mean(sample, axis=0)
-    utils_visualization.draw_projection(sample_average)
+    sample_averaged = utils_feature_loading.read_fcs_global_average('seed', 'pcc', 'gamma', sub_range=range(1, 16))
+    utils_visualization.draw_projection(sample_averaged)
     
-    # gaussian smooth
-    cm_filtered = fcs_spatial_filter(sample, projection_params={"source": "auto", "type": "3d_spherical"},
-                                     filter_params={'computation': 'gaussian', 'lateral_mode': 'bilateral',
-                                                    'sigma': 0.1, 'lambda_reg': None, 'reinforce': False}, 
-                                     visualize=True)
+    # gaussian filtering; gaussian; sigma = 0.1
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'gaussian_filtering',
+                                                         'sigma': 0.1,
+                                                         'lateral_mode': 'bilateral', 'reinforce': False}, 
+                                       apply_filter='gaussian_filtering',
+                                       visualize=True)
     
-    # inverse gaussian; lambda = 0.1
-    cm_filtered = fcs_spatial_filter(sample, projection_params={"source": "auto", "type": "3d_spherical"}, 
-                                     filter_params={'computation': 'pseudoinverse', 'lateral_mode': 'bilateral',
-                                                    'sigma': 0.1, 'lambda_reg':0.1, 'reinforce': False}, 
-                                     visualize=True)
+    # gaussian diffusion inverse; sigma = 0.1, lambda = 0.1
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'diffusion_inverse',
+                                                         'sigma': 0.1, 'lambda_reg': 0.1,
+                                                         'lateral_mode': 'bilateral', 'reinforce': False}, 
+                                       apply_filter='diffusion_inverse',
+                                       visualize=True)
     
-    # inverse gaussian; lambda = 0.01
-    cm_filtered = fcs_spatial_filter(sample, projection_params={"source": "auto", "type": "3d_spherical"}, 
-                                     filter_params={'computation': 'pseudoinverse', 'lateral_mode': 'bilateral',
-                                                    'sigma': 0.1, 'lambda_reg': 0.01, 'reinforce': False}, 
-                                     visualize=True)
+    # gaussian diffusion inverse; sigma = 0.1, lambda = 0.01
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'diffusion_inverse',
+                                                         'sigma': 0.1, 'lambda_reg': 0.01,
+                                                         'lateral_mode': 'bilateral', 'reinforce': False}, 
+                                       apply_filter='diffusion_inverse',
+                                       visualize=True)
     
-    # laplacian graph filtering
-    cm_filtered = fcs_laplacian_geaph_filtering(sample, projection_params={"source": "auto", "type": "3d_spherical"},
-                               filtering_params={'alpha': 0.1, 'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}, 
-                               visualize=True)
+    # graph_laplacian; alpha = 0.1
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'graph_laplacian',
+                                                         'alpha': 0.1, 'sigma': None,
+                                                         'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}, 
+                                       apply_filter='graph_laplacian',
+                                       visualize=True)
+    
+    # graph_laplacian_denoising; cutoff rank = 5
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'graph_laplacian_denoising',
+                                                         'cutoff_rank': 5,
+                                                         'normalized': False, 'reinforce': False}, 
+                                       apply_filter='graph_laplacian_denoising',
+                                       visualize=True)
+    
+    # graph_tikhonov_inverse; alpha = 0.1, lambda = 1e-2
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'graph_tikhonov_inverse',
+                                                         'alpha': 0.1, 'lambda': 1e-2,
+                                                         'normalized': False, 'reinforce': False}, 
+                                       apply_filter='graph_tikhonov_inverse',
+                                       visualize=True)
+    
+    # graph_tikhonov_inverse; alpha = 0.1, lambda = 1e-2
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'spectral_graph_filtering', 
+                                                         't': 10, 
+                                                         'normalized': False, 'reinforce': False}, 
+                                       apply_filter='spectral_graph_filtering',
+                                       visualize=True)
     
     # %% Channel Feature
     # de_sample = utils_feature_loading.read_cfs('seed', 'sub1ex1', 'de_LDS')
