@@ -200,7 +200,7 @@ def global_average_consistency_check(apply_filter='diffusion_inverse',
     # valid filters
     filters_valid={'diffusion_inverse', 
                    'gaussian_filtering', 
-                   'graph_laplacian', 'graph_laplacian_denoising', 'graph_tikhonov_inverse'}
+                   'graph_laplacian_filtering', 'graph_spectral_filtering', 'graph_tikhonov_inverse'}
     
     # default parameteres
     if apply_filter == 'gaussian_filtering':
@@ -209,11 +209,11 @@ def global_average_consistency_check(apply_filter='diffusion_inverse',
     elif apply_filter == 'diffusion_inverse':
         filtering_params={'computation': 'diffusion_inverse', 'lateral_mode': 'bilateral',
                           'sigma': 0.1, 'lambda_reg': 0.01, 'reinforce': False}
-    elif apply_filter == 'graph_laplacian':
-        filtering_params={'computation': 'laplacian_graph', 'lateral_mode': 'bilateral',
+    elif apply_filter == 'graph_laplacian_filtering':
+        filtering_params={'computation': 'graph_laplacian_filtering', 'lateral_mode': 'bilateral',
                           'alpha': 0.1, 'normalized': False, 'reinforce': False}
-    elif apply_filter == 'graph_laplacian_denoising':
-        filtering_params={'computation': 'laplacian_graph_denoising',
+    elif apply_filter == 'graph_spectral_filtering':
+        filtering_params={'computation': 'graph_spectral_filtering',
                           'cutoff_rank': 5, 'normalized': False, 'reinforce': False}
     elif apply_filter == 'graph_tikhonov_inverse':
         filtering_params={'computation': 'graph_tikhonov_inverse', 
@@ -334,7 +334,7 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
                                              save=False):
     # subnetworks selects;channel selects------start
     # valid filters
-    filters_valid={'diffusion_inverse', 'graph_laplacian', 'graph_laplacian_denoising', 'graph_tikhonov_inverse'}
+    filters_valid={'diffusion_inverse', 'graph_laplacian', 'graph_spectral_filtering', 'graph_tikhonov_inverse'}
     
     # default parameteres
     # if apply_filter == 'gaussian_filtering':
@@ -343,11 +343,11 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
     # elif apply_filter == 'diffusion_inverse':
     #     filtering_params={'computation': 'gaussian', 'lateral_mode': 'bilateral',
     #                       'sigma': 0.1, 'lambda_reg': 0.01, 'reinforce': False}
-    # elif apply_filter == 'graph_laplacian':
-    #     filtering_params={'computation': 'laplacian_graph', 'lateral_mode': 'bilateral',
+    # elif apply_filter == 'graph_laplacian_filtering':
+    #     filtering_params={'computation': 'graph_laplacian_filtering', 'lateral_mode': 'bilateral',
     #                       'alpha': 0.1, 'lambda_scaling': False, 'normalized': False, 'reinforce': False}
-    # elif apply_filter == 'graph_laplacian_denoising':
-    #     filtering_params={'computation': 'laplacian_graph_denoising',
+    # elif apply_filter == 'graph_spectral_filtering':
+    #     filtering_params={'computation': 'graph_spectral_filtering',
     #                       'cutoff_rank': 5, 'normalized': False, 'reinforce': False}
     # elif apply_filter == 'graph_tikhonov_inverse':
     #     filtering_params={'computation': 'graph_tikhonov_inverse', 
@@ -511,9 +511,9 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
             parameters_prompt = f'sigma_{filtering_params.get('sigma')}_lambda_reg_{filtering_params.get('lambda_reg')}'
         elif apply_filter == 'gaussian_filtering':
             parameters_prompt = f'sigma_{filtering_params.get('sigma')}'
-        elif apply_filter == 'graph_laplacian':
+        elif apply_filter == 'graph_laplacian_filtering':
             parameters_prompt = f'sigma_{filtering_params.get('sigma')}'
-        elif apply_filter == 'graph_laplacian_denoising':
+        elif apply_filter == 'graph_spectral_filtering':
             parameters_prompt = f'cutoff_rank_{filtering_params.get('cutoff_rank')}'
         elif apply_filter == 'graph_tikhonov_inverse':
             parameters_prompt = f'alpha_{filtering_params.get('alpha')}_lambda_{filtering_params.get('lambda')}'
@@ -577,13 +577,13 @@ def normal_evaluation_framework():
                                         'sigma': 0.1, 'lambda_reg': 0.01,
                                         'lateral_mode': 'bilateral', 'reinforce': False}
     
-    filtering_params_graph_laplacian={'computation': 'graph_laplacian',
-                                      'alpha': 0.1, 'sigma': None,
-                                      'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}
+    filtering_params_graph_laplacian_filtering={'computation': 'graph_laplacian_filtering',
+                                                'alpha': 0.1, 'sigma': None,
+                                                'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}
     
-    filtering_params_graph_laplacian_denoising={'computation': 'graph_laplacian_denoising',
-                                                'cutoff_rank': 5,
-                                                'normalized': False, 'reinforce': False}
+    filtering_params_graph_spectral_filtering={'computation': 'graph_spectral_filtering',
+                                               'cutoff_rank': 5,
+                                               'normalized': False, 'reinforce': False}
     
     filtering_params_graph_tikhonov_inverse={'computation': 'graph_tikhonov_inverse',
                                              'alpha': 0.1, 'lambda': 1e-2,
@@ -632,37 +632,25 @@ def normal_evaluation_framework():
         #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
         #                                          save=True)
         
-        # graph_laplacian; alpha = 1， sigma = 0.05, 0.1, 0.25, 0.5, 0.8, 1.2, 2.0
+        # graph_laplacian_filtering; alpha = 1， sigma = 0.05, 0.1, 0.25, 0.5, 0.8, 1.2, 2.0
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian',
+                                                 filtering_params={'computation': 'graph_laplacian_filtering',
                                                                    'alpha': 1, 'sigma': 0.05,
                                                                    'lateral_mode': 'bilateral',
                                                                    'normalized': False, 'reinforce': False},
                                                  selection_rate=selection_rate, feature_cm='pcc',
-                                                 apply_filter='graph_laplacian',
+                                                 apply_filter='graph_laplacian_filtering',
                                                  subject_range=range(6,16), experiment_range=range(1,4),
                                                  subnetworks_extract='read',
                                                  subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
                                                  save=True)
         
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian',
-                                                                   'alpha': 1, 'sigma': 0.05,
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='plv',
-                                                 apply_filter='graph_laplacian',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        # # graph_laplacian_denoising; cutoff rank = 3, 5, 7
+        # # graph_spectral_filtering; cutoff rank = 3, 5, 7
         # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'graph_laplacian_denoising', 'cutoff_rank': 5,
+        #                                          filtering_params={'computation': 'graph_spectral_filtering', 'cutoff_rank': 5,
         #                                                            'normalized': False, 'reinforce': False},
         #                                          selection_rate=selection_rate, feature_cm='plv',
-        #                                          apply_filter='graph_laplacian_denoising',
+        #                                          apply_filter='graph_spectral_filtering',
         #                                          subject_range=range(6,16), experiment_range=range(1,4),
         #                                          subnetworks_extract='read',
         #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),

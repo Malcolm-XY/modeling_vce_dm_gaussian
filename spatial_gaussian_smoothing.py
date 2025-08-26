@@ -251,8 +251,8 @@ def apply_diffusion_inverse(matrix, distance_matrix,
     return filtered_matrix
 
 # laplacian graph filtering
-def apply_graph_laplacian_filter(matrix, distance_matrix,
-                                 filtering_params={'computation': 'graph_laplacian',
+def apply_graph_laplacian_filtering(matrix, distance_matrix,
+                                 filtering_params={'computation': 'graph_laplacian_filtering',
                                                    'alpha': 0.1,
                                                    'sigma': None,  # 新增
                                                    'lateral_mode': 'bilateral',
@@ -303,12 +303,12 @@ def apply_graph_laplacian_filter(matrix, distance_matrix,
 
     return filtered_matrix
 
-# graph laplacian denoising
-def apply_graph_laplacian_denoising(matrix, distance_matrix,
-                                    filtering_params={'computation': 'graph_laplacian_denoising',
-                                                      'cutoff_rank': 5,
-                                                      'normalized': False, 'reinforce': False},
-                                    visualize=False):
+# graph spectral filtering
+def apply_graph_spectral_filtering(matrix, distance_matrix,
+                                   filtering_params={'computation': 'graph_spectral_filtering',
+                                                     'cutoff_rank': 5,
+                                                     'normalized': False, 'reinforce': False},
+                                   visualize=False):
     """
     Applies Graph Laplacian Denoising to a functional connectivity matrix by removing
     low-frequency components in the graph spectral domain (i.e., spatially smooth structures).
@@ -566,7 +566,7 @@ def fcs_filtering_common(fcs,
     # valid filters
     filters_valid={'gaussian_filtering', 
                    'diffusion_inverse', 
-                   'graph_laplacian', 'graph_laplacian_denoising',
+                   'graph_laplacian', 'graph_spectral_filtering',
                    'graph_tikhonov_inverse', 'spectral_graph_filtering'}
     
     # default parameteres
@@ -578,11 +578,11 @@ def fcs_filtering_common(fcs,
                                         'sigma': 0.1, 'lambda_reg': 0.01,
                                         'lateral_mode': 'bilateral', 'reinforce': False}
     
-    filtering_params_graph_laplacian={'computation': 'graph_laplacian',
+    filtering_params_graph_laplacian={'computation': 'graph_laplacian_filtering',
                                       'alpha': 0.1, 'sigma': None,
                                       'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}
     
-    filtering_params_graph_laplacian_denoising={'computation': 'graph_laplacian_denoising',
+    filtering_params_graph_laplacian_denoising={'computation': 'graph_spectral_filtering',
                                                 'cutoff_rank': 5,
                                                 'normalized': False, 'reinforce': False}
     
@@ -609,14 +609,14 @@ def fcs_filtering_common(fcs,
             fcs_filtered = apply_diffusion_inverse(matrix=fcs, distance_matrix=distance_matrix, 
                                                    filtering_params=filtering_params,
                                                    visualize=False)
-        elif apply_filter=='graph_laplacian':
-            fcs_filtered=apply_graph_laplacian_filter(matrix=fcs, distance_matrix=distance_matrix, 
+        elif apply_filter=='graph_laplacian_filtering':
+            fcs_filtered=apply_graph_laplacian_filtering(matrix=fcs, distance_matrix=distance_matrix, 
                                                       filtering_params=filtering_params,
                                                       visualize=False)
-        elif apply_filter=='graph_laplacian_denoising':
-            fcs_filtered=apply_graph_laplacian_denoising(matrix=fcs, distance_matrix=distance_matrix, 
-                                                         filtering_params=filtering_params,
-                                                         visualize=False)
+        elif apply_filter=='graph_spectral_filtering':
+            fcs_filtered=apply_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
+                                                        filtering_params=filtering_params,
+                                                        visualize=False)
         elif apply_filter=='graph_tikhonov_inverse':
             fcs_filtered=apply_graph_tikhonov_inverse(matrix=fcs, distance_matrix=distance_matrix, 
                                                       filtering_params=filtering_params,
@@ -645,18 +645,18 @@ def fcs_filtering_common(fcs,
                                                    visualize=False)
                 fcs_filtered.append(filtered)
                 
-        elif apply_filter=='graph_laplacian':
+        elif apply_filter=='graph_laplacian_filtering':
             for fc in fcs:
-                filtered = apply_graph_laplacian_filter(matrix=fc, distance_matrix=distance_matrix, 
+                filtered = apply_graph_laplacian_filtering(matrix=fc, distance_matrix=distance_matrix, 
                                                         filtering_params=filtering_params,
                                                         visualize=False)
                 fcs_filtered.append(filtered)
                 
-        elif apply_filter=='graph_laplacian_denoising':
+        elif apply_filter=='graph_spectral_filtering':
             for fc in fcs:
-                filtered = apply_graph_laplacian_denoising(matrix=fc, distance_matrix=distance_matrix, 
-                                                           filtering_params=filtering_params,
-                                                           visualize=False)
+                filtered = apply_graph_spectral_filtering(matrix=fc, distance_matrix=distance_matrix, 
+                                                          filtering_params=filtering_params,
+                                                          visualize=False)
                 fcs_filtered.append(filtered)
                 
         elif apply_filter=='graph_tikhonov_inverse':
@@ -733,22 +733,22 @@ if __name__ == '__main__':
                                        apply_filter='diffusion_inverse',
                                        visualize=True)
     
-    # graph_laplacian; alpha = 0.1
+    # graph_laplacian_filtering; alpha = 0.1
     cm_filtered = fcs_filtering_common(sample_averaged,
                                        projection_params={"source": "auto", "type": "3d_spherical"},
-                                       filtering_params={'computation': 'graph_laplacian',
+                                       filtering_params={'computation': 'graph_laplacian_filtering',
                                                          'alpha': 0.1, 'sigma': None,
                                                          'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}, 
-                                       apply_filter='graph_laplacian',
+                                       apply_filter='graph_laplacian_filtering',
                                        visualize=True)
     
-    # graph_laplacian_denoising; cutoff rank = 5
+    # graph_spectral_filtering; cutoff rank = 5
     cm_filtered = fcs_filtering_common(sample_averaged,
                                        projection_params={"source": "auto", "type": "3d_spherical"},
-                                       filtering_params={'computation': 'graph_laplacian_denoising',
+                                       filtering_params={'computation': 'graph_spectral_filtering',
                                                          'cutoff_rank': 5,
                                                          'normalized': False, 'reinforce': False}, 
-                                       apply_filter='graph_laplacian_denoising',
+                                       apply_filter='graph_spectral_filtering',
                                        visualize=True)
     
     # graph_tikhonov_inverse; alpha = 0.1, lambda = 1e-2
