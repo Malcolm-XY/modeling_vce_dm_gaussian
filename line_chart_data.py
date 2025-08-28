@@ -15,9 +15,9 @@ class data:
 identifier_sm = [
     "Baseline: Original FNs",
     "Proposing: Gaussian Diffusion Inverse (sigma=0.1 lambda=0.01)",
-    "Competition 1: Graph Laplacian Filtering (sigma=0.1)",
-    "Competition 2: Graph Laplacian Denoising (cut off rank=3)",
-    "Competition 3: Spectral Graph Filtering (t=5)",
+    "Competition 1: Graph Laplacian Filtering (alpha=0.1)",
+    "Competition 2: Graph Spectral Filtering (cut off rank=3)",
+    "Competition 3: Exp High-Pass Graph Spectral Filtering (t=5)",
 ]
 
 summary_pcc_accuracy = {
@@ -101,13 +101,13 @@ summary_data_plv = data(identifier_sm, summary_plv_accuracy, summary_plv_f1score
 
 # %% appendix_data_pcc_graph_laplacian
 identifier_gl = [
-    "Graph Laplacian Filtering (sigma=0.05)",
-    "Graph Laplacian Filtering (sigma=0.1)",
-    "Graph Laplacian Filtering (sigma=0.25)",
-    "Graph Laplacian Filtering (sigma=0.5)",
-    "Graph Laplacian Filtering (sigma=0.8)",
-    "Graph Laplacian Filtering (sigma=1.2)",
-    "Graph Laplacian Filtering (sigma=2.0)"
+    "Graph Laplacian Filtering (alpha=0.05)",
+    "Graph Laplacian Filtering (alpha=0.1)",
+    "Graph Laplacian Filtering (alpha=0.25)",
+    "Graph Laplacian Filtering (alpha=0.5)",
+    "Graph Laplacian Filtering (alpha=0.8)",
+    "Graph Laplacian Filtering (alpha=1.2)",
+    "Graph Laplacian Filtering (alpha=2.0)"
 ]
 
 gl_pcc_accuracy = {
@@ -158,9 +158,9 @@ appendix_data_pcc_gl = data(identifier_gl, gl_pcc_accuracy, gl_pcc_f1score)
 
 # %% appendix_data_pcc_graph laplacian denoising
 identifier_ld = [
-    "Graph Laplacian Denoising (cut off rank=3)",
-    "Graph Laplacian Denoising (cut off rank=5)",
-    "Graph Laplacian Denoising (cut off rank=7)"
+    "Graph Spectral Laplacian (cut off rank=3)",
+    "Graph Spectral Denoising (cut off rank=5)",
+    "Graph Spectral Denoising (cut off rank=7)"
 ]
 
 ld_pcc_accuracy = {   
@@ -195,10 +195,10 @@ appendix_data_pcc_ld = data(identifier_ld, ld_pcc_accuracy, ld_pcc_f1score)
 
 # %% appendix_data_pcc_spectral graph filtering
 identifier_sgf = [
-    "Spectral Graph Filtering (t=1)",
-    "Spectral Graph Filtering (t=5)",
-    "Spectral Graph Filtering (t=10)",
-    "Spectral Graph Filtering (t=20)"
+    "Exp High-Pass Graph Spectral Filtering (t=1)",
+    "Exp High-Pass Graph Spectral Filtering (t=5)",
+    "Exp High-Pass Graph Spectral Filtering (t=10)",
+    "Exp High-Pass Graph Spectral Filtering (t=20)"
 ]
 
 sgf_pcc_accuracy = {   
@@ -239,13 +239,13 @@ appendix_data_pcc_sgf = data(identifier_sgf, sgf_pcc_accuracy, sgf_pcc_f1score)
 
 # %% appendix_data_plv_graph_laplacian
 identifier_gl = [
-    "Graph Laplacian Filtering (sigma=0.05)",
-    "Graph Laplacian Filtering (sigma=0.1)",
-    "Graph Laplacian Filtering (sigma=0.25)",
-    "Graph Laplacian Filtering (sigma=0.5)",
-    "Graph Laplacian Filtering (sigma=0.8)",
-    "Graph Laplacian Filtering (sigma=1.2)",
-    "Graph Laplacian Filtering (sigma=2.0)"
+    "Graph Laplacian Filtering (alpha=0.05)",
+    "Graph Laplacian Filtering (alpha=0.1)",
+    "Graph Laplacian Filtering (alpha=0.25)",
+    "Graph Laplacian Filtering (alpha=0.5)",
+    "Graph Laplacian Filtering (alpha=0.8)",
+    "Graph Laplacian Filtering (alpha=1.2)",
+    "Graph Laplacian Filtering (alpha=2.0)"
 ]
 
 gl_plv_accuracy = {
@@ -296,9 +296,9 @@ appendix_data_plv_gl = data(identifier_gl, gl_plv_accuracy, gl_plv_f1score)
 
 # %% appendix_data_pcc_graph laplacian denoising
 identifier_ld = [
-    "Graph Laplacian Denoising (cut off rank=3)",
-    "Graph Laplacian Denoising (cut off rank=5)",
-    "Graph Laplacian Denoising (cut off rank=7)"
+    "Graph Spectral Laplacian (cut off rank=3)",
+    "Graph Spectral Denoising (cut off rank=5)",
+    "Graph Spectral Denoising (cut off rank=7)"
 ]
 
 ld_plv_accuracy = {   
@@ -334,10 +334,10 @@ appendix_data_plv_ld = data(identifier_ld, ld_plv_accuracy, ld_plv_f1score)
 
 # %% appendix_data_pcc_spectral graph filtering
 identifier_sgf = [
-    "Spectral Graph Filtering (t=1)",
-    "Spectral Graph Filtering (t=5)",
-    "Spectral Graph Filtering (t=10)",
-    "Spectral Graph Filtering (t=20)"
+    "Exp High-Pass Graph Spectral Filtering (t=1)",
+    "Exp High-Pass Graph Spectral Filtering (t=5)",
+    "Exp High-Pass Graph Spectral Filtering (t=10)",
+    "Exp High-Pass Graph Spectral Filtering (t=20)"
 ]
 
 sgf_plv_accuracy = {   
