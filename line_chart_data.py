@@ -14,7 +14,7 @@ class data:
 # %% summary_data_pcc
 identifier_sm = [
     "Baseline: Original FNs",
-    "★ Proposing: Diffusion Inverse (sigma=0.1 lambda=0.01)",
+    "Proposing: Gaussian Diffusion Inverse (sigma=0.1 lambda=0.01)",
     "Competition 1: Graph Laplacian Filtering (sigma=0.1)",
     "Competition 2: Graph Laplacian Denoising (cut off rank=3)",
     "Competition 3: Spectral Graph Filtering (t=5)",
