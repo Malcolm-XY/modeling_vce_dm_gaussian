@@ -339,7 +339,7 @@ def apply_graph_spectral_filtering(matrix, distance_matrix,
 
     if visualize:
         try:
-            utils_visualization.draw_projection(matrix, 'Before Graph Laplacian Denoising')
+            utils_visualization.draw_projection(matrix, 'Before Graph Spectral Filtering')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
@@ -368,7 +368,9 @@ def apply_graph_spectral_filtering(matrix, distance_matrix,
     P_low = U_low @ U_low.T               # Projector onto low-frequency subspace
 
     # Step 5: Filter matrix by removing smooth components
-    filtered_matrix = (np.eye(matrix.shape[0]) - P_low) @ matrix @ (np.eye(matrix.shape[0]) - P_low.T)
+    # filtered_matrix = (np.eye(matrix.shape[0]) - P_low) @ matrix @ (np.eye(matrix.shape[0]) - P_low.T) # High Pass
+    
+    filtered_matrix = P_low @ matrix @ P_low.T # Low Pass
 
     # Step 6: Optional residual reinforcement
     if reinforce:
