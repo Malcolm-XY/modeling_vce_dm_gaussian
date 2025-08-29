@@ -1274,7 +1274,11 @@ if __name__ == "__main__":
     # fc_mi_matrices_dreamer = fc_matrices_circle('dreamer', feature='wpli', save=True, subject_range=range(1, 2))
     # fc_mi_matrices_dreamer = fc_matrices_circle('dreamer', feature='mi', save=True, subject_range=range(1, 2))
     
-    # %% Feature Engineering; Compute Average CM   
+    # %% Feature Engineering; Compute Average CM
+    fcs_global_averaged = compute_average_fcs('seed', subjects=range(1, 6), experiments=range(1, 4), 
+                            feature='pcc', band='joint', in_file_type='.h5',
+                            save=True, verbose=False, visualization=True)
+    
     fcs_global_averaged = compute_average_fcs('seed', subjects=range(1, 11), experiments=range(1, 4), 
                             feature='pcc', band='joint', in_file_type='.h5',
                             save=True, verbose=False, visualization=True)

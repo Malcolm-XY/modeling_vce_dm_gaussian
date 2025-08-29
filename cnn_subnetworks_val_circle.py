@@ -512,12 +512,12 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
         elif apply_filter == 'gaussian_filtering':
             parameters_prompt = f'sigma_{filtering_params.get('sigma')}'
         elif apply_filter == 'graph_laplacian_filtering':
-            parameters_prompt = f'sigma_{filtering_params.get('sigma')}'
+            parameters_prompt = f'sigma_{filtering_params.get('alpha')}'
         elif apply_filter == 'graph_spectral_filtering':
             parameters_prompt = f'cutoff_rank_{filtering_params.get('cutoff_rank')}'
         elif apply_filter == 'graph_tikhonov_inverse':
             parameters_prompt = f'alpha_{filtering_params.get('alpha')}_lambda_{filtering_params.get('lambda')}'
-        elif apply_filter == 'spectral_graph_filtering':
+        elif apply_filter == 'exp_graph_spectral_filtering':
             parameters_prompt = f't_{filtering_params.get('t')}'
         
         folder_name = 'results_cnn_subnetwork_evaluation'
@@ -649,7 +649,7 @@ def normal_evaluation_framework():
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
                                                  filtering_params={'computation': 'graph_spectral_filtering', 'cutoff_rank': 3,
                                                                    'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='plv',
+                                                 selection_rate=selection_rate, feature_cm='pcc',
                                                  apply_filter='graph_spectral_filtering',
                                                  subject_range=range(6,16), experiment_range=range(1,4),
                                                  subnetworks_extract='read',
@@ -659,7 +659,7 @@ def normal_evaluation_framework():
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
                                                  filtering_params={'computation': 'graph_spectral_filtering', 'cutoff_rank': 5,
                                                                    'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='plv',
+                                                 selection_rate=selection_rate, feature_cm='pcc',
                                                  apply_filter='graph_spectral_filtering',
                                                  subject_range=range(6,16), experiment_range=range(1,4),
                                                  subnetworks_extract='read',
@@ -669,20 +669,20 @@ def normal_evaluation_framework():
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
                                                  filtering_params={'computation': 'graph_spectral_filtering', 'cutoff_rank': 7,
                                                                    'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='plv',
+                                                 selection_rate=selection_rate, feature_cm='pcc',
                                                  apply_filter='graph_spectral_filtering',
                                                  subject_range=range(6,16), experiment_range=range(1,4),
                                                  subnetworks_extract='read',
                                                  subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
                                                  save=True)
         
-        # # spectral_graph_filtering; t = 1, 5, 10, 20
+        # # exp_graph_spectral_filtering; t = 1, 5, 10, 20
         # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'spectral_graph_filtering', 
+        #                                          filtering_params={'computation': 'exp_graph_spectral_filtering', 
         #                                                            't': 5, 
         #                                                            'normalized': False, 'reinforce': False},
         #                                          selection_rate=selection_rate, feature_cm='plv',
-        #                                          apply_filter='spectral_graph_filtering',
+        #                                          apply_filter='exp_graph_spectral_filtering',
         #                                          subject_range=range(6,16), experiment_range=range(1,4),
         #                                          subnetworks_extract='read', 
         #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),

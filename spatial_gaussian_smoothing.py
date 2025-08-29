@@ -482,13 +482,13 @@ def apply_graph_tikhonov_inverse(matrix, distance_matrix,
     return estimated_matrix
 
 # spectral graph filtering
-def apply_spectral_graph_filtering(matrix, distance_matrix,
-                                   filtering_params={'computation': 'spectral_graph_filtering', 
+def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
+                                   filtering_params={'computation': 'exp_graph_spectral_filtering', 
                                                      't': 10, 
                                                      'normalized': False, 'reinforce': False},
                                    visualize=False):
     """
-    Applies spectral graph filtering (high-pass) to a functional connectivity matrix
+    Applies Exp Graph Spectral Filtering (Low-pass) to a functional connectivity matrix
     by attenuating low-frequency components in the graph Laplacian spectrum.
 
     Parameters
@@ -517,7 +517,7 @@ def apply_spectral_graph_filtering(matrix, distance_matrix,
 
     if visualize:
         try:
-            utils_visualization.draw_projection(matrix, 'Before Spectral Graph Filtering')
+            utils_visualization.draw_projection(matrix, 'Before Exp Graph Spectral Filtering')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
@@ -553,7 +553,7 @@ def apply_spectral_graph_filtering(matrix, distance_matrix,
 
     if visualize:
         try:
-            utils_visualization.draw_projection(filtered_matrix, 'After Spectral Graph Filtering')
+            utils_visualization.draw_projection(filtered_matrix, 'After Exp Graph Spectral Filtering')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
@@ -569,7 +569,7 @@ def fcs_filtering_common(fcs,
     filters_valid={'gaussian_filtering', 
                    'diffusion_inverse', 
                    'graph_laplacian', 'graph_spectral_filtering',
-                   'graph_tikhonov_inverse', 'spectral_graph_filtering'}
+                   'graph_tikhonov_inverse', 'exp_graph_spectral_filtering'}
     
     # default parameteres
     filtering_params_gaussian_filtering={'computation': 'gaussian_filtering',
@@ -592,7 +592,7 @@ def fcs_filtering_common(fcs,
                                              'alpha': 0.1, 'lambda': 1e-2,
                                              'normalized': False, 'reinforce': False}
     
-    filtering_params_spectral_graph_filtering={'computation': 'spectral_graph_filtering', 
+    filtering_params_exp_graph_spectral_filtering={'computation': 'exp_graph_spectral_filtering', 
                       't': 10, 
                       'normalized': False, 'reinforce': False}
     
@@ -623,10 +623,10 @@ def fcs_filtering_common(fcs,
             fcs_filtered=apply_graph_tikhonov_inverse(matrix=fcs, distance_matrix=distance_matrix, 
                                                       filtering_params=filtering_params,
                                                       visualize=False)
-        elif apply_filter=='spectral_graph_filtering':
-            fcs_filtered=apply_spectral_graph_filtering(matrix=fcs, distance_matrix=distance_matrix, 
-                                                      filtering_params=filtering_params,
-                                                      visualize=False)
+        elif apply_filter=='exp_graph_spectral_filtering':
+            fcs_filtered=apply_exp_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
+                                                            filtering_params=filtering_params,
+                                                            visualize=False)
         
         if visualize:
             utils_visualization.draw_projection(fcs_filtered)
@@ -668,9 +668,9 @@ def fcs_filtering_common(fcs,
                                                         visualize=False)
                 fcs_filtered.append(filtered)
         
-        elif apply_filter=='spectral_graph_filtering':
+        elif apply_filter=='exp_graph_spectral_filtering':
             for fc in fcs:
-                filtered = apply_spectral_graph_filtering(matrix=fc, distance_matrix=distance_matrix, 
+                filtered = apply_exp_graph_spectral_filtering(matrix=fc, distance_matrix=distance_matrix, 
                                                               filtering_params=filtering_params,
                                                               visualize=False)
                 fcs_filtered.append(filtered)
@@ -765,10 +765,10 @@ if __name__ == '__main__':
     # graph_tikhonov_inverse; alpha = 0.1, lambda = 1e-2
     cm_filtered = fcs_filtering_common(sample_averaged,
                                        projection_params={"source": "auto", "type": "3d_spherical"},
-                                       filtering_params={'computation': 'spectral_graph_filtering', 
+                                       filtering_params={'computation': 'exp_graph_spectral_filtering', 
                                                          't': 10, 
                                                          'normalized': False, 'reinforce': False}, 
-                                       apply_filter='spectral_graph_filtering',
+                                       apply_filter='exp_graph_spectral_filtering',
                                        visualize=True)
     
     # %% Channel Feature
