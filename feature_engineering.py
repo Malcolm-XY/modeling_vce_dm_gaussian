@@ -1276,15 +1276,15 @@ if __name__ == "__main__":
     
     # %% Feature Engineering; Compute Average CM
     fcs_global_averaged = compute_average_fcs('seed', subjects=range(1, 6), experiments=range(1, 4), 
-                            feature='pcc', band='joint', in_file_type='.h5',
+                            feature='plv', band='joint', in_file_type='.h5',
                             save=True, verbose=False, visualization=True)
     
     fcs_global_averaged = compute_average_fcs('seed', subjects=range(1, 11), experiments=range(1, 4), 
-                            feature='pcc', band='joint', in_file_type='.h5',
+                            feature='plv', band='joint', in_file_type='.h5',
                             save=True, verbose=False, visualization=True)
     
     fcs_global_averaged = compute_average_fcs('seed', subjects=range(1, 16), experiments=range(1, 4), 
-                            feature='pcc', band='joint', in_file_type='.h5',
+                            feature='plv', band='joint', in_file_type='.h5',
                             save=True, verbose=False, visualization=True)
     
     fcs_global_averaged_ = utils_feature_loading.read_fcs_global_average('seed', 'pcc')

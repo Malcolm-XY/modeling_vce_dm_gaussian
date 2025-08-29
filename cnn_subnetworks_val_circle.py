@@ -446,7 +446,7 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
     
     # for traning and testing in CNN------start
     # labels
-    labels = utils_feature_loading.read_labels(dataset='seed')
+    labels = utils_feature_loading.read_labels(dataset='seed', header=True)
     y = torch.tensor(np.array(labels)).view(-1)
     
     # data and evaluation circle

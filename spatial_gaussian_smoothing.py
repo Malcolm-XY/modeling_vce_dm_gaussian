@@ -541,7 +541,7 @@ def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
     eigenvectors = eigenvectors[:, idx]
 
     # Step 4: Construct high-pass filter h(λ) = 1 - exp(-t * λ)
-    h_lambda = 1 - np.exp(-t * eigenvalues)
+    h_lambda = np.exp(-t * eigenvalues)
     H = eigenvectors @ np.diag(h_lambda) @ eigenvectors.T
 
     # Step 5: Filter matrix: apply H on both sides
