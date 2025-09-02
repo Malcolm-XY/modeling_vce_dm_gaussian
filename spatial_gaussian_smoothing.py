@@ -306,42 +306,64 @@ def apply_graph_laplacian_filtering(matrix, distance_matrix,
 # graph spectral filtering
 def apply_graph_spectral_filtering(matrix, distance_matrix,
                                    filtering_params={'computation': 'graph_spectral_filtering',
-                                                     'cutoff_rank': 5,
+                                                     'cutoff': 0.1,
                                                      'mode': 'lowpass',  # 可选 'lowpass' 或 'highpass'
                                                      'normalized': False,
                                                      'reinforce': False},
                                    visualize=False):
     """
-    Applies Graph Spectral Filtering (low-pass or high-pass) to a functional connectivity matrix.
+    Graph Spectral Filtering (low-pass / high-pass) for FC matrices.
 
     Parameters
     ----------
-    matrix : np.ndarray, shape (N, N)
-        Input functional connectivity matrix (e.g., PCC or PLV).
-    distance_matrix : np.ndarray, shape (N, N)
-        Pairwise spatial distances between EEG channels.
-    cutoff_rank : int
-        Number of graph spectral modes used for filtering.
-        - In low-pass mode: number of lowest-frequency modes retained.
-        - In high-pass mode: number of lowest-frequency modes removed.
-    mode : str
-        'lowpass' (retain smooth components) or 'highpass' (remove smooth components).
+    cutoff : float in (0,1] or int >= 1
+        - float -> proportion of lowest-frequency modes (rate-based)
+        - int   -> number of lowest-frequency modes (rank-based)
+        Backward-compat:
+          * accepts `cutoff_rate` (float) or `cutoff_rank` (int).
+          * if both given, `cutoff` > `cutoff_rate` > `cutoff_rank` in precedence.
+    mode : {'lowpass', 'highpass'}
+        'lowpass': keep the lowest-frequency k modes.
+        'highpass': remove the lowest-frequency k modes.
     normalized : bool
-        If True, use normalized Laplacian; otherwise use unnormalized Laplacian.
+        Use normalized Laplacian if True.
     reinforce : bool
-        If True, adds original matrix back to filtered result (residual enhancement).
-    visualize : bool
-        If True, show pre- and post-filter visualization.
+        Add residual (original matrix) after filtering.
 
-    Returns
-    -------
-    filtered_matrix : np.ndarray
-        The filtered functional connectivity matrix.
+    Notes
+    -----
+    - Using a *rate* is recommended when N varies across datasets/montages.
+    - k is clamped to [1, N-1] to avoid degenerate projectors.
     """
-    cutoff_rank = filtering_params.get('cutoff_rank', 5)
+    import numpy as np
+
+    if filtering_params is None:
+        filtering_params = {}
+
     mode = filtering_params.get('mode', 'lowpass').lower()
     normalized = filtering_params.get('normalized', False)
     reinforce = filtering_params.get('reinforce', False)
+
+    # ----- cutoff resolution (unified) -----
+    cutoff = filtering_params.get('cutoff', None)
+    if cutoff is None:
+        # fallback to explicit legacy keys
+        if 'cutoff_rate' in filtering_params:
+            cutoff = float(filtering_params['cutoff_rate'])
+        elif 'cutoff_rank' in filtering_params:
+            cutoff = int(filtering_params['cutoff_rank'])
+        else:
+            cutoff = 0.1  # sensible default: keep/remove ~10% of modes
+
+    N = matrix.shape[0]
+    if isinstance(cutoff, float):
+        if not (0 < cutoff <= 1):
+            raise ValueError("cutoff as float must be in (0,1].")
+        k = max(1, min(N-1, int(round(cutoff * N))))
+    elif isinstance(cutoff, int):
+        k = max(1, min(N-1, int(cutoff)))
+    else:
+        raise TypeError("cutoff must be float in (0,1] or int >= 1.")
 
     if visualize:
         try:
@@ -349,12 +371,13 @@ def apply_graph_spectral_filtering(matrix, distance_matrix,
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
-    # Step 1: Construct adjacency matrix W (Gaussian kernel)
-    sigma = np.mean(distance_matrix[distance_matrix > 0])
-    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
-    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+    # ----- Graph construction -----
+    dm = np.array(distance_matrix, dtype=float)
+    dm = np.where(dm == 0, 1e-6, dm)
+    sigma = np.mean(dm[dm > 0])
+    W = np.exp(-np.square(dm) / (2 * sigma ** 2))
 
-    # Step 2: Compute Laplacian matrix L
+    # Laplacian
     D = np.diag(W.sum(axis=1))
     if normalized:
         D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
@@ -362,37 +385,34 @@ def apply_graph_spectral_filtering(matrix, distance_matrix,
     else:
         L = D - W
 
-    # Step 3: Eigen-decomposition of L
-    eigenvalues, eigenvectors = np.linalg.eigh(L)
-    idx = np.argsort(eigenvalues)
-    eigenvectors = eigenvectors[:, idx]
-    eigenvalues = eigenvalues[idx]
+    # ----- Eigen-decomposition -----
+    evals, evecs = np.linalg.eigh(L)
+    order = np.argsort(evals)
+    evecs = evecs[:, order]
+    # low-frequency basis
+    U_low = evecs[:, :k]
+    P_low = U_low @ U_low.T
+    I = np.eye(N)
 
-    # Step 4: Construct projection matrices
-    U_low = eigenvectors[:, :cutoff_rank]   # Lowest-frequency modes
-    P_low = U_low @ U_low.T                 # Projector onto low-frequency subspace
-    I = np.eye(matrix.shape[0])
-
-    # Step 5: Filter according to mode
+    # ----- Filtering -----
     if mode == 'lowpass':
-        filtered_matrix = P_low @ matrix @ P_low.T
+        filtered = P_low @ matrix @ P_low.T
     elif mode == 'highpass':
-        filtered_matrix = (I - P_low) @ matrix @ (I - P_low.T)
+        P_high = I - P_low
+        filtered = P_high @ matrix @ P_high.T
     else:
-        raise ValueError("Invalid mode. Use 'lowpass' or 'highpass'.")
+        raise ValueError("mode must be 'lowpass' or 'highpass'.")
 
-    # Step 6: Optional residual reinforcement
     if reinforce:
-        filtered_matrix += matrix
+        filtered += matrix
 
     if visualize:
         try:
-            utils_visualization.draw_projection(filtered_matrix, f'After Graph Spectral Filtering ({mode})')
+            utils_visualization.draw_projection(filtered, f'After Graph Spectral Filtering ({mode}, k={k})')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
-    return filtered_matrix
-
+    return filtered
 
 # graph tikhonov inverse
 from scipy.sparse.linalg import cg
@@ -645,14 +665,14 @@ def fcs_filtering_common(fcs,
             fcs_filtered=apply_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
                                                         filtering_params=filtering_params,
                                                         visualize=False)
-        elif apply_filter=='graph_tikhonov_inverse':
-            fcs_filtered=apply_graph_tikhonov_inverse(matrix=fcs, distance_matrix=distance_matrix, 
-                                                      filtering_params=filtering_params,
-                                                      visualize=False)
         elif apply_filter=='exp_graph_spectral_filtering':
             fcs_filtered=apply_exp_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
                                                             filtering_params=filtering_params,
                                                             visualize=False)
+        elif apply_filter=='graph_tikhonov_inverse':
+            fcs_filtered=apply_graph_tikhonov_inverse(matrix=fcs, distance_matrix=distance_matrix, 
+                                                      filtering_params=filtering_params,
+                                                      visualize=False)
         
         if visualize:
             utils_visualization.draw_projection(fcs_filtered)
@@ -686,19 +706,19 @@ def fcs_filtering_common(fcs,
                                                           filtering_params=filtering_params,
                                                           visualize=False)
                 fcs_filtered.append(filtered)
-                
-        elif apply_filter=='graph_tikhonov_inverse':
-            for fc in fcs:
-                filtered = apply_graph_tikhonov_inverse(matrix=fc, distance_matrix=distance_matrix, 
-                                                        filtering_params=filtering_params,
-                                                        visualize=False)
-                fcs_filtered.append(filtered)
         
         elif apply_filter=='exp_graph_spectral_filtering':
             for fc in fcs:
                 filtered = apply_exp_graph_spectral_filtering(matrix=fc, distance_matrix=distance_matrix, 
                                                               filtering_params=filtering_params,
                                                               visualize=False)
+                fcs_filtered.append(filtered)
+        
+        elif apply_filter=='graph_tikhonov_inverse':
+            for fc in fcs:
+                filtered = apply_graph_tikhonov_inverse(matrix=fc, distance_matrix=distance_matrix, 
+                                                        filtering_params=filtering_params,
+                                                        visualize=False)
                 fcs_filtered.append(filtered)
         
         if visualize:
