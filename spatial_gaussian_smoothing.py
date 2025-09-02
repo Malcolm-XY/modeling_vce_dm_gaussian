@@ -726,8 +726,14 @@ if __name__ == '__main__':
     gaussian_kernel = np.exp(-np.square(distance_matrix_euc) / (2 * sigma ** 2))
     utils_visualization.draw_projection(gaussian_kernel)
 
+    gaussian_kernel_inv = np.linalg.inv(gaussian_kernel)
+    utils_visualization.draw_projection(gaussian_kernel_inv)
+
     gaussian_kernel = np.exp(-np.square(distance_matrix_sph) / (2 * sigma ** 2))
     utils_visualization.draw_projection(gaussian_kernel)
+    
+    gaussian_kernel_inv = np.linalg.inv(gaussian_kernel)
+    utils_visualization.draw_projection(gaussian_kernel_inv)
     
     # %% Connectivity Matrix
     # get sample and visualize sample
