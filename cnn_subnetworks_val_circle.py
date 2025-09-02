@@ -524,7 +524,10 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
             parameters_prompt = f'sigma_{filtering_params.get('sigma')}'
         
         elif apply_filter == 'graph_laplacian_filtering':
-            parameters_prompt = f'sigma_{filtering_params.get('alpha')}'
+            parameters_prompt = f'alpha_{filtering_params.get('alpha')}'
+
+        elif apply_filter == 'surface_laplacian_filtering_generalization':
+            parameters_prompt = f'sigma_{filtering_params.get('sigma')}'
         
         elif apply_filter == 'graph_spectral_filtering':
             parameters_prompt = f'mode_{filtering_params.get('mode')}_cutoff_rank_{filtering_params.get('cutoff_rank')}'
