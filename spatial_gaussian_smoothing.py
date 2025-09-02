@@ -253,7 +253,7 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 # laplacian graph filtering
 def apply_graph_laplacian_filtering(matrix, distance_matrix,
                                  filtering_params={'computation': 'graph_laplacian_filtering',
-                                                   'alpha': 0.1,
+                                                   'alpha': 1,
                                                    'sigma': None,  # 新增
                                                    'lateral_mode': 'bilateral',
                                                    'normalized': False,
@@ -261,11 +261,12 @@ def apply_graph_laplacian_filtering(matrix, distance_matrix,
                                  visualize=False):
     """
     ...
+    alpha : 为简化模型设置为1
     sigma : float or None
         高斯核的尺度参数。如果为 None，则默认取非零距离的均值。
     """
 
-    alpha = filtering_params.get('alpha', 0.1)
+    alpha = filtering_params.get('alpha', 1)
     sigma = filtering_params.get('sigma', None)  # 取出用户自定义 sigma
     lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
     normalized = filtering_params.get('normalized', False)
@@ -304,13 +305,13 @@ def apply_graph_laplacian_filtering(matrix, distance_matrix,
     return filtered_matrix
 
 # graph spectral filtering
-def apply_graph_spectral_filtering(matrix, distance_matrix,
-                                   filtering_params={'computation': 'graph_spectral_filtering',
-                                                     'cutoff': 0.1,
-                                                     'mode': 'lowpass',  # 可选 'lowpass' 或 'highpass'
-                                                     'normalized': False,
-                                                     'reinforce': False},
-                                   visualize=False):
+def apply_truncated_graph_spectral_filtering(matrix, distance_matrix,
+                                             filtering_params={'computation': 'truncated_graph_spectral_filtering',
+                                                               'cutoff': 0.1,
+                                                               'mode': 'lowpass',  # 可选 'lowpass' 或 'highpass'
+                                                               'normalized': False,
+                                                               'reinforce': False},
+                                             visualize=False):
     """
     Graph Spectral Filtering (low-pass / high-pass) for FC matrices.
 
@@ -414,6 +415,99 @@ def apply_graph_spectral_filtering(matrix, distance_matrix,
 
     return filtered
 
+# spectral graph filtering
+def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
+                                   filtering_params={'computation': 'exp_graph_spectral_filtering',
+                                                     't': 10,
+                                                     'mode': 'lowpass',   # 可选 'lowpass' 或 'highpass'
+                                                     'normalized': False,
+                                                     'reinforce': False},
+                                   visualize=False):
+    """
+    Applies Exponential Graph Spectral Filtering (Low-pass or High-pass) to a 
+    functional connectivity matrix in the graph Laplacian spectrum.
+
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix (e.g., PCC or PLV).
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise spatial distances between EEG channels.
+    t : float
+        Controls the strength of filtering. Larger t makes the effect stronger.
+        - In low-pass mode: suppresses high frequencies more.
+        - In high-pass mode: removes more smooth components.
+    mode : str
+        'lowpass' (h(λ)=exp(-tλ)) or 'highpass' (h(λ)=1-exp(-tλ)).
+    normalized : bool
+        If True, use normalized Laplacian; otherwise unnormalized.
+    reinforce : bool
+        If True, adds original matrix back to filtered result (residual enhancement).
+    visualize : bool
+        If True, show pre- and post-filter visualization.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray
+        The spectrally filtered functional connectivity matrix.
+    """
+    t = filtering_params.get('t', 10)
+    mode = filtering_params.get('mode', 'lowpass').lower()
+    normalized = filtering_params.get('normalized', False)
+    reinforce = filtering_params.get('reinforce', False)
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before Exp Graph Spectral Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    # Step 1: Construct adjacency matrix W (Gaussian kernel)
+    sigma = np.mean(distance_matrix[distance_matrix > 0])
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+
+    # Step 2: Compute Laplacian matrix L
+    D = np.diag(W.sum(axis=1))
+    if normalized:
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
+        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
+    else:
+        L = D - W
+
+    # Step 3: Spectral decomposition of L
+    eigenvalues, eigenvectors = np.linalg.eigh(L)
+    idx = np.argsort(eigenvalues)
+    eigenvalues = eigenvalues[idx]
+    eigenvectors = eigenvectors[:, idx]
+
+    # Step 4: Construct exponential filter
+    if mode == 'lowpass':
+        h_lambda = np.exp(-t * eigenvalues)      # Low-pass: keep smooth components
+    elif mode == 'highpass':
+        h_lambda = 1 - np.exp(-t * eigenvalues)  # High-pass: remove smooth components
+    else:
+        raise ValueError("Invalid mode. Use 'lowpass' or 'highpass'.")
+
+    H = eigenvectors @ np.diag(h_lambda) @ eigenvectors.T
+
+    # Step 5: Filter matrix: apply H on both sides
+    filtered_matrix = H @ matrix @ H.T
+
+    # Step 6: Optional residual reinforcement
+    if reinforce:
+        filtered_matrix += matrix
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(
+                filtered_matrix, f'After Exp Graph Spectral Filtering ({mode})'
+            )
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return filtered_matrix
+
 # graph tikhonov inverse
 from scipy.sparse.linalg import cg
 from scipy.sparse import identity, kron, csc_matrix
@@ -511,100 +605,6 @@ def apply_graph_tikhonov_inverse(matrix, distance_matrix,
 
     return estimated_matrix
 
-# spectral graph filtering
-def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
-                                   filtering_params={'computation': 'exp_graph_spectral_filtering',
-                                                     't': 10,
-                                                     'mode': 'lowpass',   # 可选 'lowpass' 或 'highpass'
-                                                     'normalized': False,
-                                                     'reinforce': False},
-                                   visualize=False):
-    """
-    Applies Exponential Graph Spectral Filtering (Low-pass or High-pass) to a 
-    functional connectivity matrix in the graph Laplacian spectrum.
-
-    Parameters
-    ----------
-    matrix : np.ndarray, shape (N, N)
-        Input functional connectivity matrix (e.g., PCC or PLV).
-    distance_matrix : np.ndarray, shape (N, N)
-        Pairwise spatial distances between EEG channels.
-    t : float
-        Controls the strength of filtering. Larger t makes the effect stronger.
-        - In low-pass mode: suppresses high frequencies more.
-        - In high-pass mode: removes more smooth components.
-    mode : str
-        'lowpass' (h(λ)=exp(-tλ)) or 'highpass' (h(λ)=1-exp(-tλ)).
-    normalized : bool
-        If True, use normalized Laplacian; otherwise unnormalized.
-    reinforce : bool
-        If True, adds original matrix back to filtered result (residual enhancement).
-    visualize : bool
-        If True, show pre- and post-filter visualization.
-
-    Returns
-    -------
-    filtered_matrix : np.ndarray
-        The spectrally filtered functional connectivity matrix.
-    """
-    t = filtering_params.get('t', 10)
-    mode = filtering_params.get('mode', 'lowpass').lower()
-    normalized = filtering_params.get('normalized', False)
-    reinforce = filtering_params.get('reinforce', False)
-
-    if visualize:
-        try:
-            utils_visualization.draw_projection(matrix, 'Before Exp Graph Spectral Filtering')
-        except ModuleNotFoundError:
-            print("Visualization module not found.")
-
-    # Step 1: Construct adjacency matrix W (Gaussian kernel)
-    sigma = np.mean(distance_matrix[distance_matrix > 0])
-    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
-    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
-
-    # Step 2: Compute Laplacian matrix L
-    D = np.diag(W.sum(axis=1))
-    if normalized:
-        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
-        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
-    else:
-        L = D - W
-
-    # Step 3: Spectral decomposition of L
-    eigenvalues, eigenvectors = np.linalg.eigh(L)
-    idx = np.argsort(eigenvalues)
-    eigenvalues = eigenvalues[idx]
-    eigenvectors = eigenvectors[:, idx]
-
-    # Step 4: Construct exponential filter
-    if mode == 'lowpass':
-        h_lambda = np.exp(-t * eigenvalues)      # Low-pass: keep smooth components
-    elif mode == 'highpass':
-        h_lambda = 1 - np.exp(-t * eigenvalues)  # High-pass: remove smooth components
-    else:
-        raise ValueError("Invalid mode. Use 'lowpass' or 'highpass'.")
-
-    H = eigenvectors @ np.diag(h_lambda) @ eigenvectors.T
-
-    # Step 5: Filter matrix: apply H on both sides
-    filtered_matrix = H @ matrix @ H.T
-
-    # Step 6: Optional residual reinforcement
-    if reinforce:
-        filtered_matrix += matrix
-
-    if visualize:
-        try:
-            utils_visualization.draw_projection(
-                filtered_matrix, f'After Exp Graph Spectral Filtering ({mode})'
-            )
-        except ModuleNotFoundError:
-            print("Visualization module not found.")
-
-    return filtered_matrix
-
-
 # %% aplly filters on fcs
 def fcs_filtering_common(fcs,
                          projection_params={"source": "auto", "type": "3d_spherical"},
@@ -613,34 +613,10 @@ def fcs_filtering_common(fcs,
                          visualize=False):
     # valid filters
     filters_valid={'gaussian_filtering', 
-                   'diffusion_inverse', 
-                   'graph_laplacian', 'graph_spectral_filtering',
-                   'graph_tikhonov_inverse', 'exp_graph_spectral_filtering'}
-    
-    # default parameteres
-    filtering_params_gaussian_filtering={'computation': 'gaussian_filtering',
-                                         'sigma': 0.1, 
-                                         'lateral_mode': 'bilateral', 'reinforce': False}
-    
-    filtering_params_diffusion_inverse={'computation': 'diffusion_inverse',
-                                        'sigma': 0.1, 'lambda_reg': 0.01,
-                                        'lateral_mode': 'bilateral', 'reinforce': False}
-    
-    filtering_params_graph_laplacian_filtering={'computation': 'graph_laplacian_filtering',
-                                                'alpha': 0.1, 'sigma': None,
-                                                'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}
-    
-    filtering_params_graph_spectral_filtering={'computation': 'graph_spectral_filtering',
-                                                'cutoff_rank': 5, 'mode': 'lowpass',
-                                                'normalized': False, 'reinforce': False}
-    
-    filtering_params_exp_graph_spectral_filtering={'computation': 'exp_graph_spectral_filtering', 
-                                                   't': 10, 'mode': 'lowpass',
-                                                   'normalized': False, 'reinforce': False}
-    
-    filtering_params_graph_tikhonov_inverse={'computation': 'graph_tikhonov_inverse',
-                                             'alpha': 0.1, 'lambda': 1e-2,
-                                             'normalized': False, 'reinforce': False}
+                   'diffusion_inverse', 'graph_laplacian_filtering', 
+                   'generalized_surface_laplacian_filtering',
+                   'truncated_graph_spectral_filtering', 'exp_graph_spectral_filtering',
+                   'graph_tikhonov_inverse'}
     
     # Step 1: Compute spatial distance matrix
     _, distance_matrix = feature_engineering.compute_distance_matrix('seed', projection_params=projection_params)
@@ -661,10 +637,10 @@ def fcs_filtering_common(fcs,
             fcs_filtered=apply_graph_laplacian_filtering(matrix=fcs, distance_matrix=distance_matrix, 
                                                       filtering_params=filtering_params,
                                                       visualize=False)
-        elif apply_filter=='graph_spectral_filtering':
-            fcs_filtered=apply_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
-                                                        filtering_params=filtering_params,
-                                                        visualize=False)
+        elif apply_filter=='truncated_graph_spectral_filtering':
+            fcs_filtered=apply_truncated_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
+                                                                  filtering_params=filtering_params,
+                                                                  visualize=False)
         elif apply_filter=='exp_graph_spectral_filtering':
             fcs_filtered=apply_exp_graph_spectral_filtering(matrix=fcs, distance_matrix=distance_matrix, 
                                                             filtering_params=filtering_params,
@@ -700,11 +676,11 @@ def fcs_filtering_common(fcs,
                                                         visualize=False)
                 fcs_filtered.append(filtered)
                 
-        elif apply_filter=='graph_spectral_filtering':
+        elif apply_filter=='truncated_graph_spectral_filtering':
             for fc in fcs:
-                filtered = apply_graph_spectral_filtering(matrix=fc, distance_matrix=distance_matrix, 
-                                                          filtering_params=filtering_params,
-                                                          visualize=False)
+                filtered = apply_truncated_graph_spectral_filtering(matrix=fc, distance_matrix=distance_matrix, 
+                                                                    filtering_params=filtering_params,
+                                                                    visualize=False)
                 fcs_filtered.append(filtered)
         
         elif apply_filter=='exp_graph_spectral_filtering':
@@ -790,13 +766,13 @@ if __name__ == '__main__':
                                        apply_filter='graph_laplacian_filtering',
                                        visualize=True)
     
-    # graph_spectral_filtering; cutoff rank = 5
+    # graph_spectral_filtering; cutoff = 0.1
     cm_filtered = fcs_filtering_common(sample_averaged,
                                        projection_params={"source": "auto", "type": "3d_spherical"},
-                                       filtering_params={'computation': 'graph_spectral_filtering',
-                                                         'cutoff_rank': 5, 'mode': 'lowpass',
+                                       filtering_params={'computation': 'truncated_graph_spectral_filtering',
+                                                         'cutoff': 0.1, 'mode': 'highpass',
                                                          'normalized': False, 'reinforce': False}, 
-                                       apply_filter='graph_spectral_filtering',
+                                       apply_filter='truncated_graph_spectral_filtering',
                                        visualize=True)
     
     #  exp_graph_spectral_filtering; t = 10

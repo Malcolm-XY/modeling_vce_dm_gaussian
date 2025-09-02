@@ -74,7 +74,7 @@ portion_data_plv = data(identifier_po, portion_plv_accuracy, portion_plv_f1score
 identifier_sm = [
     "Baseline: Original FNs",
     "Proposing: Gaussian Diffusion Inverse (sigma=0.1 lambda=0.01)",
-    "Competition 1: Graph Laplacian Filtering (alpha=0.1)",
+    "Competition 1: Graph Laplacian Filtering (sigma=0.1)",
     "Competition 2: Graph Spectral Filtering (cut off rank=3)",
     "Competition 3: Exp High-Pass Graph Spectral Filtering (t=5)",
 ]
@@ -160,13 +160,13 @@ summary_data_plv = data(identifier_sm, summary_plv_accuracy, summary_plv_f1score
 
 # %% appendix_data_pcc_graph_laplacian
 identifier_gl = [
-    "Graph Laplacian Filtering (alpha=0.05)",
-    "Graph Laplacian Filtering (alpha=0.1)",
-    "Graph Laplacian Filtering (alpha=0.25)",
-    "Graph Laplacian Filtering (alpha=0.5)",
-    "Graph Laplacian Filtering (alpha=0.8)",
-    "Graph Laplacian Filtering (alpha=1.2)",
-    "Graph Laplacian Filtering (alpha=2.0)"
+    "Graph Laplacian Filtering (sigma=0.05)",
+    "Graph Laplacian Filtering (sigma=0.1)",
+    "Graph Laplacian Filtering (sigma=0.25)",
+    "Graph Laplacian Filtering (sigma=0.5)",
+    "Graph Laplacian Filtering (sigma=0.8)",
+    "Graph Laplacian Filtering (sigma=1.2)",
+    "Graph Laplacian Filtering (sigma=2.0)"
 ]
 
 gl_pcc_accuracy = {
@@ -298,13 +298,13 @@ appendix_data_pcc_sgf = data(identifier_sgf, sgf_pcc_accuracy, sgf_pcc_f1score)
 
 # %% appendix_data_plv_graph_laplacian
 identifier_gl = [
-    "Graph Laplacian Filtering (alpha=0.05)",
-    "Graph Laplacian Filtering (alpha=0.1)",
-    "Graph Laplacian Filtering (alpha=0.25)",
-    "Graph Laplacian Filtering (alpha=0.5)",
-    "Graph Laplacian Filtering (alpha=0.8)",
-    "Graph Laplacian Filtering (alpha=1.2)",
-    "Graph Laplacian Filtering (alpha=2.0)"
+    "Graph Laplacian Filtering (sigma=0.05)",
+    "Graph Laplacian Filtering (sigma=0.1)",
+    "Graph Laplacian Filtering (sigma=0.25)",
+    "Graph Laplacian Filtering (sigma=0.5)",
+    "Graph Laplacian Filtering (sigma=0.8)",
+    "Graph Laplacian Filtering (sigma=1.2)",
+    "Graph Laplacian Filtering (sigma=2.0)"
 ]
 
 gl_plv_accuracy = {
