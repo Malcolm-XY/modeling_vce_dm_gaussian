@@ -641,10 +641,76 @@ def normal_evaluation_framework():
                                                  subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
                                                  save=True)
         
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'truncated_graph_spectral_filtering', 
+                                                                   'cutoff': 0.2, 'mode': 'lowpass', 
+                                                                   'normalized': False, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='truncated_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read',
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'truncated_graph_spectral_filtering', 
+                                                                   'cutoff': 0.3, 'mode': 'lowpass', 
+                                                                   'normalized': False, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='truncated_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read',
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'truncated_graph_spectral_filtering', 
+                                                                   'cutoff': 0.4, 'mode': 'lowpass', 
+                                                                   'normalized': False, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='truncated_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read',
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
         # graph_spectral_filtering; highpass; cutoff = 0.1, 0.2, 0.3, 0.4
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
                                                  filtering_params={'computation': 'truncated_graph_spectral_filtering', 
                                                                    'cutoff': 0.1, 'mode': 'highpass', 
+                                                                   'normalized': False, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='truncated_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read',
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'truncated_graph_spectral_filtering', 
+                                                                   'cutoff': 0.2, 'mode': 'highpass', 
+                                                                   'normalized': False, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='truncated_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read',
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'truncated_graph_spectral_filtering', 
+                                                                   'cutoff': 0.3, 'mode': 'highpass', 
+                                                                   'normalized': False, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='truncated_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read',
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'truncated_graph_spectral_filtering', 
+                                                                   'cutoff': 0.4, 'mode': 'highpass', 
                                                                    'normalized': False, 'reinforce': False},
                                                  selection_rate=selection_rate, feature_cm='pcc',
                                                  apply_filter='truncated_graph_spectral_filtering',

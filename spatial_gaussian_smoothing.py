@@ -250,6 +250,79 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
     return filtered_matrix
 
+# generalized surface laplacian filtering
+def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
+                                                  filtering_params={'computation': 'generalized_surface_laplacian_filtering',
+                                                                    'sigma': 0.1,
+                                                                    'reinforce': False},
+                                                  visualize=False):
+    """
+    Applies a Laplacian-style residual filter to a functional connectivity (FC) matrix,
+    extending the idea of EEG surface Laplacian to connectivity edges.
+    
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix (symmetric).
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise distance matrix between channels.
+    filtering_params : dict
+        Filtering parameters:
+            - 'sigma': float, spatial Gaussian kernel width for defining edge-edge weights.
+            - 'reinforce': bool, if True, add original FN back to filtered result.
+    visualize : bool
+        If True, visualize before and after matrices.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray
+        Laplacian-filtered connectivity matrix.
+    """
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before FN-Laplacian Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    sigma = filtering_params.get('sigma', 0.1)
+
+    # Avoid zero distances
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+    
+    N = matrix.shape[0]
+    filtered_matrix = np.zeros_like(matrix)
+
+    # ---- Step 1: Define weights between edges (i,j) and (k,l) ----
+    # Here, N(i,j) = edges that share a node with (i,j)
+    for i in range(N):
+        for j in range(N):
+            if i == j: 
+                continue
+            neighbors = set([(i, k) for k in range(N) if k != i]) | set([(k, j) for k in range(N) if k != j])
+            val = matrix[i, j]
+            lap_term = 0.0
+            for (k, l) in neighbors:
+                if k == l:
+                    continue
+                # Gaussian weight based on node distances
+                dist = distance_matrix[i, k] + distance_matrix[j, l]
+                w = np.exp(-(dist**2) / (2 * sigma**2))
+                lap_term += w * matrix[k, l]
+            filtered_matrix[i, j] = val - lap_term
+
+    # ---- Step 2: Reinforce original if requested ----
+    if filtering_params.get('reinforce', False):
+        filtered_matrix += matrix
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(filtered_matrix, 'After FN-Laplacian Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return filtered_matrix
+
 # laplacian graph filtering
 def apply_graph_laplacian_filtering(matrix, distance_matrix,
                                  filtering_params={'computation': 'graph_laplacian_filtering',
@@ -633,6 +706,10 @@ def fcs_filtering_common(fcs,
             fcs_filtered = apply_diffusion_inverse(matrix=fcs, distance_matrix=distance_matrix, 
                                                    filtering_params=filtering_params,
                                                    visualize=False)
+        elif apply_filter=='generalized_surface_laplacian_filtering':
+            fcs_filtered = apply_generalized_surface_laplacian_filtering(matrix=fcs, distance_matrix=distance_matrix, 
+                                                                         filtering_params=filtering_params,
+                                                                         visualize=False)
         elif apply_filter=='graph_laplacian_filtering':
             fcs_filtered=apply_graph_laplacian_filtering(matrix=fcs, distance_matrix=distance_matrix, 
                                                       filtering_params=filtering_params,
@@ -675,7 +752,14 @@ def fcs_filtering_common(fcs,
                                                         filtering_params=filtering_params,
                                                         visualize=False)
                 fcs_filtered.append(filtered)
-                
+        
+        elif apply_filter=='generalized_surface_laplacian_filtering':
+            for fc in fcs:
+                filtered = apply_generalized_surface_laplacian_filtering(matrix=fc, distance_matrix=distance_matrix, 
+                                                                         filtering_params=filtering_params,
+                                                                         visualize=False)
+                fcs_filtered.append(filtered)
+        
         elif apply_filter=='truncated_graph_spectral_filtering':
             for fc in fcs:
                 filtered = apply_truncated_graph_spectral_filtering(matrix=fc, distance_matrix=distance_matrix, 
@@ -755,6 +839,15 @@ if __name__ == '__main__':
                                                          'sigma': 0.1, 'lambda_reg': 0.01,
                                                          'lateral_mode': 'bilateral', 'reinforce': False}, 
                                        apply_filter='diffusion_inverse',
+                                       visualize=True)
+    
+    # generalized_surface_laplacian_filtering; sigma = 0.1
+    cm_filtered = fcs_filtering_common(sample_averaged,
+                                       projection_params={"source": "auto", "type": "3d_spherical"},
+                                       filtering_params={'computation': 'generalized_surface_laplacian_filtering',
+                                                         'sigma': 0.1,
+                                                         'lateral_mode': 'bilateral', 'normalized': False, 'reinforce': False}, 
+                                       apply_filter='generalized_surface_laplacian_filtering',
                                        visualize=True)
     
     # graph_laplacian_filtering; alpha = 0.1
