@@ -252,49 +252,107 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
-                                                  filtering_params={'sigma': 0.1,
-                                                                    'reinforce': False},
-                                                  visualize=False):
+                                                 filtering_params={'computation': 'generalized_surface_laplacian_filtering',
+                                                                   'sigma': 0.1,
+                                                                   'reinforce': False},
+                                                 visualize=False):
     """
-    向量化/矩阵式实现（无四重循环）：
-        Y = X - (XK + KX)；若 reinforce: Y = 2X - (XK + KX)
-    其中 K = exp(-(D^2)/(2*sigma^2))，并将 X 的对角置零。
+    Applies a Laplacian-style residual filter to a functional connectivity (FC) matrix,
+    extending the idea of EEG surface Laplacian to connectivity edges.
+
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix (symmetric).
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise distance matrix between channels.
+    filtering_params : dict
+        Filtering parameters:
+            - 'sigma': float, spatial Gaussian kernel width for defining edge-edge weights.
+            - 'reinforce': bool, if True, add original FN back to filtered result.
+    visualize : bool
+        If True, visualize before and after matrices.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray
+        Laplacian-filtered connectivity matrix.
     """
-    X = np.asarray(matrix, dtype=float).copy()
-    D = np.asarray(distance_matrix, dtype=float).copy()
-
-    # --- 跟原实现一致：避免零距离 ---
-    eps = 1e-6
-    np.fill_diagonal(D, eps)
-
-    sigma = filtering_params.get('sigma', 0.1)
-    reinforce = filtering_params.get('reinforce', False)
-
-    # 高斯核矩阵（对称）
-    K = np.exp(-(D**2) / (2 * sigma**2))
-
-    # 与原循环等价：排除 (k=i) 或 (k=j) 的贡献，相当于把 X 的对角先置零
-    np.fill_diagonal(X, 0.0)
-
-    # 拉普拉斯项：L = X K + K X
-    L = X @ K + K @ X
-
-    # 滤波：Y = X - L；若 reinforce：再加回 X
-    Y = X - L
-    if reinforce:
-        Y = Y + X  # == 2X - (XK + KX)
-
-    # 与原函数行为一致：对角保持为 0
-    np.fill_diagonal(Y, 0.0)
-
     if visualize:
         try:
             utils_visualization.draw_projection(matrix, 'Before FN-Laplacian Filtering')
-            utils_visualization.draw_projection(Y, 'After FN-Laplacian Filtering')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
-    return Y
+    sigma = filtering_params.get('sigma', 0.1)
+
+    # Avoid zero distances
+    # A small epsilon is better than direct replacement to maintain numerical stability
+    distance_matrix_safe = np.where(distance_matrix == 0, 1e-12, distance_matrix)
+
+    N = matrix.shape[0]
+    
+    # 步骤 1: 构建权重矩阵 W
+    # W(i,j,k,l) = exp(-(dist(i,k)^2 + dist(j,l)^2)/(2*sigma^2))
+    
+    # 使用广播机制计算所有可能的 (i,k) 和 (j,l) 距离组合
+    # dist_ik 是一个 (N, N, N, 1) 的矩阵，dist_jl 是一个 (N, N, 1, N) 的矩阵
+    dist_ik = distance_matrix_safe.reshape(N, 1, N, 1)
+    dist_jl = distance_matrix_safe.reshape(1, N, 1, N)
+    
+    # dist_sum_squared 是一个 (N, N, N, N) 的矩阵，表示 (dist(i,k) + dist(j,l))^2
+    dist_sum_squared = (dist_ik + dist_jl)**2
+    
+    # weights 是一个 (N, N, N, N) 的矩阵，表示所有 w(i,j,k,l)
+    weights = np.exp(-dist_sum_squared / (2 * sigma**2))
+
+    # 步骤 2: 计算 lap_term
+    # lap_term(i,j) = sum_{k,l} W(i,j,k,l) * M(k,l)
+    
+    # M_kl 是一个 (N, N) 的矩阵，我们需要将其扩展为 (1, 1, N, N) 来进行广播
+    M_kl = matrix.reshape(1, 1, N, N)
+    
+    # element-wise multiplication
+    weighted_matrix = weights * M_kl
+
+    # 根据代码逻辑，邻居是 (i,k) 或 (k,j)，而不是所有 (k,l)
+    # 这意味着 k 和 l 必须与 i 或 j 相关联。
+    # 原始代码的逻辑是：对于每个 (i,j) 边，只考虑与它共享节点的边 (i,k) 和 (k,j)。
+    # 这种严格的邻域定义使得完全的向量化变得复杂，因为需要构建一个稀疏的或复杂的掩码。
+    # 原始代码的循环逻辑是：
+    # lap_term(i,j) = sum_{k!=i} w(i,j,i,k) * M(i,k) + sum_{k!=j} w(i,j,k,j) * M(k,j)
+    
+    # 我们可以通过两次矩阵乘法来近似这个过程，但最直接的向量化方法是构建一个包含所有项的张量，然后进行求和。
+    # 但根据原始代码的严格邻域定义，最好的向量化方式是分开计算两个求和项。
+    
+    # 第一个求和项: sum_{k} w(i,j,i,k) * M(i,k)
+    # W_ik 是 (N, N, N)
+    W_ik = np.exp(-((distance_matrix_safe[:, np.newaxis, :] + distance_matrix_safe[np.newaxis, :, :])**2) / (2 * sigma**2))
+    term1 = np.sum(W_ik * matrix[np.newaxis, :, :], axis=2)
+
+    # 第二个求和项: sum_{k} w(i,j,k,j) * M(k,j)
+    W_kj = np.exp(-((distance_matrix_safe[:, np.newaxis, :] + distance_matrix_safe[np.newaxis, :, :])**2) / (2 * sigma**2))
+    term2 = np.sum(W_kj * matrix[:, np.newaxis, :], axis=2)
+
+    lap_term = term1 + term2
+
+    # 步骤 3: 计算最终的滤波矩阵
+    filtered_matrix = matrix - lap_term
+
+    # 步骤 4: Reinforce if requested
+    if filtering_params.get('reinforce', False):
+        filtered_matrix += matrix
+
+    # Ensure diagonal is zero, as connectivity to self is not relevant
+    np.fill_diagonal(filtered_matrix, 0)
+    
+    if visualize:
+        try:
+            utils_visualization.draw_projection(filtered_matrix, 'After FN-Laplacian Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return filtered_matrix
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
