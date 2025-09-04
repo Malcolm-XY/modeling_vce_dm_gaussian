@@ -252,10 +252,56 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
-                                                  filtering_params={'computation': 'generalized_surface_laplacian_filtering',
-                                                                    'sigma': 0.1,
+                                                  filtering_params={'sigma': 0.1,
                                                                     'reinforce': False},
                                                   visualize=False):
+    """
+    向量化/矩阵式实现（无四重循环）：
+        Y = X - (XK + KX)；若 reinforce: Y = 2X - (XK + KX)
+    其中 K = exp(-(D^2)/(2*sigma^2))，并将 X 的对角置零。
+    """
+    X = np.asarray(matrix, dtype=float).copy()
+    D = np.asarray(distance_matrix, dtype=float).copy()
+
+    # --- 跟原实现一致：避免零距离 ---
+    eps = 1e-6
+    np.fill_diagonal(D, eps)
+
+    sigma = filtering_params.get('sigma', 0.1)
+    reinforce = filtering_params.get('reinforce', False)
+
+    # 高斯核矩阵（对称）
+    K = np.exp(-(D**2) / (2 * sigma**2))
+
+    # 与原循环等价：排除 (k=i) 或 (k=j) 的贡献，相当于把 X 的对角先置零
+    np.fill_diagonal(X, 0.0)
+
+    # 拉普拉斯项：L = X K + K X
+    L = X @ K + K @ X
+
+    # 滤波：Y = X - L；若 reinforce：再加回 X
+    Y = X - L
+    if reinforce:
+        Y = Y + X  # == 2X - (XK + KX)
+
+    # 与原函数行为一致：对角保持为 0
+    np.fill_diagonal(Y, 0.0)
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before FN-Laplacian Filtering')
+            utils_visualization.draw_projection(Y, 'After FN-Laplacian Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return Y
+
+# generalized surface laplacian filtering
+def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
+                                                   filtering_params={'computation': 'generalized_surface_laplacian_filtering',
+                                                                     'sigma': 0.1,
+                                                                     'reinforce': False},
+                                                   visualize=False):
     """
     Applies a Laplacian-style residual filter to a functional connectivity (FC) matrix,
     extending the idea of EEG surface Laplacian to connectivity edges.
