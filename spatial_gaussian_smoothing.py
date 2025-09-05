@@ -252,9 +252,9 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
-                                                             filtering_params=None,
-                                                             visualize=False,
-                                                             upper_only=True):
+                                                  filtering_params=None,
+                                                  visualize=False,
+                                                  upper_only=True):
     """
     向量化加速版（等价于原实现）。时间复杂度依然 ~O(N^3)，
     但去掉了 Python 级三层循环，通常能快一个数量级以上。
