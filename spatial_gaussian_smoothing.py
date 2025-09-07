@@ -252,7 +252,9 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
-                                                  filtering_params=None,
+                                                  filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
+                                                                    'sigma': 0.1, 
+                                                                    'normalized': False, 'reinforce': False},
                                                   visualize=False,
                                                   upper_only=True):
     """
