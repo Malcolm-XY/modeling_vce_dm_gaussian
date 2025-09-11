@@ -334,30 +334,17 @@ def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
 def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
                                                    filtering_params={'computation': 'generalized_surface_laplacian_filtering',
                                                                      'sigma': 0.1,
-                                                                     'reinforce': False},
+                                                                     'reinforce': False,
+                                                                     'symmetrize': True},
                                                    visualize=False):
     """
-    Applies a Laplacian-style residual filter to a functional connectivity (FC) matrix,
-    extending the idea of EEG surface Laplacian to connectivity edges.
-    
-    Parameters
-    ----------
-    matrix : np.ndarray, shape (N, N)
-        Input functional connectivity matrix (symmetric).
-    distance_matrix : np.ndarray, shape (N, N)
-        Pairwise distance matrix between channels.
-    filtering_params : dict
-        Filtering parameters:
-            - 'sigma': float, spatial Gaussian kernel width for defining edge-edge weights.
-            - 'reinforce': bool, if True, add original FN back to filtered result.
-    visualize : bool
-        If True, visualize before and after matrices.
-
-    Returns
-    -------
-    filtered_matrix : np.ndarray
-        Laplacian-filtered connectivity matrix.
+    Normalized version:
+    M'_{ij} = M_{ij} - (Σ_w w * M_{kl}) / (Σ_w w)
+    where (k,l) ∈ N(i,j) share a node with (i,j), and
+    w = exp(- (D_{ik} + D_{jl})^2 / (2*sigma^2))
     """
+
+    import numpy as np
 
     if visualize:
         try:
@@ -366,38 +353,54 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
             print("Visualization module not found.")
 
     sigma = filtering_params.get('sigma', 0.1)
+    reinforce = filtering_params.get('reinforce', False)
+    symmetrize = filtering_params.get('symmetrize', True)
 
     # Avoid zero distances
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
-    
+
     N = matrix.shape[0]
     filtered_matrix = np.zeros_like(matrix)
 
-    # ---- Step 1: Define weights between edges (i,j) and (k,l) ----
-    # Here, N(i,j) = edges that share a node with (i,j)
     for i in range(N):
         for j in range(N):
-            if i == j: 
+            if i == j:
                 continue
-            neighbors = set([(i, k) for k in range(N) if k != i]) | set([(k, j) for k in range(N) if k != j])
+
+            # neighbors: edges sharing a node with (i,j)
+            neighbors = set((i, k) for k in range(N) if k != i) \
+                      | set((k, j) for k in range(N) if k != j)
+
             val = matrix[i, j]
-            lap_term = 0.0
+            weighted_sum = 0.0
+            weight_sum = 0.0
+
             for (k, l) in neighbors:
                 if k == l:
                     continue
-                # Gaussian weight based on node distances
                 dist = distance_matrix[i, k] + distance_matrix[j, l]
                 w = np.exp(-(dist**2) / (2 * sigma**2))
-                lap_term += w * matrix[k, l]
-            filtered_matrix[i, j] = val - lap_term
+                weighted_sum += w * matrix[k, l]
+                weight_sum += w
 
-    # ---- Step 2: Reinforce original if requested ----
-    if filtering_params.get('reinforce', False):
-        filtered_matrix += matrix
+            if weight_sum > 0:
+                neighbor_avg = weighted_sum / weight_sum
+            else:
+                # 极端情况下没有有效权重：将邻居平均视为 0（也可改为 val）
+                neighbor_avg = 0.0
+
+            filtered_matrix[i, j] = val - neighbor_avg
+
+    if reinforce:
+        filtered_matrix += matrix  # 等价于 I + (I - D^{-1}W)
+
+    # 保持输出对称（FC 通常是对称的；逐项更新可能引入微小不对称）
+    if symmetrize:
+        filtered_matrix = 0.5 * (filtered_matrix + filtered_matrix.T)
 
     if visualize:
         try:
-            utils_visualization.draw_projection(filtered_matrix, 'After FN-Laplacian Filtering')
+            utils_visualization.draw_projection(filtered_matrix, 'After FN-Laplacian Filtering (normalized)')
         except ModuleNotFoundError:
             print("Visualization module not found.")
 
