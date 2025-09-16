@@ -252,83 +252,101 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
-                                                  filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
-                                                                    'sigma': 0.1, 
-                                                                    'normalized': False, 'reinforce': False},
-                                                  visualize=False,
-                                                  upper_only=True):
+                                                  filtering_params={
+                                                      'computation': 'generalized_surface_laplacian_filtering',
+                                                      'sigma': 0.1,
+                                                      'reinforce': False,
+                                                      'symmetrize': True,
+                                                      # 额外：加速/稀疏选项
+                                                      'knn': None,          # int 或 None：每行只保留 k 个最近邻
+                                                      'normalized': True    # True: 归一化(减加权平均)；False: 未归一化(减加权和)
+                                                      },
+                                                  visualize=False
+                                                  ):
     """
-    向量化加速版（等价于原实现）。时间复杂度依然 ~O(N^3)，
-    但去掉了 Python 级三层循环，通常能快一个数量级以上。
+    向量化的 FN-Laplacian（边空间）实现：
+    M' = M - neighbor_avg
+    neighbor_avg(i,j) = [sum_v W[j,v] M[i,v] + sum_u W[i,u] M[u,j]] / [sum_v W[j,v] + sum_u W[i,u] - 2W[i,j]]
+    
+    若 normalized=False，则分母省略，直接用加权和（更贴近未归一化拉普拉斯）。
+    支持 knn 稀疏化以加速大规模 N。
     """
-    if filtering_params is None:
-        filtering_params = {'sigma': 0.1, 'reinforce': False}
-
-    sigma = filtering_params.get('sigma', 0.1)
-    reinforce = filtering_params.get('reinforce', False)
-
-    M = np.asarray(matrix, dtype=float)
-    D = np.asarray(distance_matrix, dtype=float)
-    N = M.shape[0]
-
-    # 避免0距离（与你原实现一致）
-    D = np.where(D == 0, 1e-6, D)
-
-    F = np.zeros_like(M)
-
-    inv2sig2 = 1.0 / (2.0 * sigma * sigma)
-
-    # 可选：只计算上三角，最后镜像
-    jslice = lambda i: slice(i+1, N) if upper_only else slice(0, N)
-
-    for i in range(N):
-        # ---- 第二部分：sum_k w2_i(k) * M[k, j]（与 j 无关，先整体算）----
-        # w2_i(k) = exp(-(D[i,k]^2)/(2σ^2))
-        w2_i = np.exp(- (D[i, :] ** 2) * inv2sig2)  # 形状 (N,)
-
-        # 形成一整行的第二部分贡献：对于所有 j，lap2[j] = sum_k w2_i(k) * M[k, j]
-        # 即 lap2 = w2_i^T @ M
-        lap2 = w2_i @ M  # 形状 (N,)
-
-        # ---- 第一部分：sum_k w1_ij(k) * M[i, k]（对每个 j 的权随 j 变化）----
-        # 为固定的 i，构造 W1(j,k) = exp(-((D[i,k] + D[j,k])^2)/(2σ^2))
-        # 这里用广播生成 N×N 的权重矩阵（行对应 j，列对应 k）
-        Di = D[i, :][None, :]       # 1×N
-        Dj = D[:, :][:, :]          # N×N（只是为了表达清晰，等价于 D）
-        # 利用广播：Dj[:, k] + Di[:, k]
-        W1 = np.exp(- ((Di + Dj) ** 2) * inv2sig2)  # 形状 N×N
-
-        # 对每个 j：lap1[j] = sum_k W1[j,k] * M[i,k]，即矩阵–向量乘
-        Mi_row = M[i, :]  # 形状 (N,)
-        lap1 = W1 @ Mi_row  # 形状 (N,)
-
-        # 合并两部分并减去
-        jidx = np.arange(N)
-        F[i, jidx] = M[i, jidx] - (lap1 + lap2)
-
-        # 跳过对角
-        F[i, i] = 0.0
-
-        # 如果只算上三角，则当前 i 只保留 j>i，其他位置先置0
-        if upper_only:
-            F[i, :i+1] = 0.0
-
-    if upper_only:
-        # 镜像成对称（你原矩阵标注为对称）
-        F = F + F.T - np.diag(np.diag(F))
-
-    if reinforce:
-        F += M
-
-    # 可选可视化（保留你的调用接口）
     if visualize:
         try:
-            utils_visualization.draw_projection(matrix, 'Before FN-Laplacian Filtering')
-            utils_visualization.draw_projection(F, 'After FN-Laplacian Filtering (NumPy)')
-        except ModuleNotFoundError:
-            print("Visualization module not found.")
+            utils_visualization.draw_projection(matrix, 'Before FN-Laplacian Filtering (fast)')
+        except Exception:
+            pass
 
-    return F
+    M = np.array(matrix, dtype=float, copy=True)
+    D = np.array(distance_matrix, dtype=float, copy=True)
+    N = M.shape[0]
+
+    sigma = float(filtering_params.get('sigma', 0.1))
+    reinforce = bool(filtering_params.get('reinforce', False))
+    symmetrize = bool(filtering_params.get('symmetrize', True))
+    knn = filtering_params.get('knn', None)
+    normalized = bool(filtering_params.get('normalized', True))
+
+    # 1) 保证对称/对角清零（FC 一般对称且对角应为 0）
+    M = 0.5 * (M + M.T)
+    np.fill_diagonal(M, 0.0)
+
+    # 2) 构造权重核 W = exp(-(D^2)/(2*sigma^2))，对角置 0
+    if sigma <= 0:
+        raise ValueError("sigma must be > 0.")
+    W = np.exp(- (D * D) / (2.0 * sigma * sigma))
+    np.fill_diagonal(W, 0.0)
+
+    # 3) 可选 kNN 稀疏化（每行只保留 k 个最大权重）
+    if knn is not None and isinstance(knn, int) and knn > 0 and knn < N-1:
+        # 对每一行，保留最大的 knn 个非对角元素
+        # 用 partition 实现 O(N) 选择，再零掉其余
+        idx = np.argpartition(W, -knn, axis=1)[:, -(knn):]   # 每行 top-k 的列索引（无序）
+        mask = np.zeros_like(W, dtype=bool)
+        row_indices = np.arange(N)[:, None]
+        mask[row_indices, idx] = True
+        # 保证对称性：取 mask 或其转置的并集（避免破坏 W 的对称）
+        mask = np.logical_or(mask, mask.T)
+        W = np.where(mask, W, 0.0)
+
+    # 4) 预计算行和
+    r = W.sum(axis=1)  # shape (N,)
+
+    # 5) 两次矩阵乘法（BLAS 加速）：A = M W,  B = W M
+    A = M @ W
+    B = W @ M
+
+    if normalized:
+        # 分子与分母
+        num = A + B
+        den = r[None, :] + r[:, None] - 2.0 * W  # shape (N,N)
+
+        # 避免除零：den<=eps 时，回退到 M 本身（等价于无邻居时不改变）
+        eps = 1e-12
+        neighbor_avg = np.where(den > eps, num / den, M)
+    else:
+        # 未归一化：使用加权和（对应你最初公式的“求和”版本）
+        neighbor_avg = A + B
+
+    # 6) 滤波：M' = M - neighbor_avg
+    M_filtered = M - neighbor_avg
+
+    # 7) 可选残差增强
+    if reinforce:
+        M_filtered = M_filtered + M  # 2M - neighbor_avg
+
+    # 8) 可选对称化
+    if symmetrize:
+        M_filtered = 0.5 * (M_filtered + M_filtered.T)
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(M_filtered, 'After FN-Laplacian Filtering (fast)')
+        except Exception:
+            pass
+
+    return M_filtered
+
 
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
@@ -338,10 +356,14 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
                                                                      'symmetrize': True},
                                                    visualize=False):
     """
+    Generalized Surface Laplacian Filtering on Functional Networks
+
     Normalized version:
     M'_{ij} = M_{ij} - (Σ_w w * M_{kl}) / (Σ_w w)
-    where (k,l) ∈ N(i,j) share a node with (i,j), and
-    w = exp(- (D_{ik} + D_{jl})^2 / (2*sigma^2))
+
+    where (k,l) ∈ N(i,j) share a node with (i,j),
+    and w = exp(-(d^2)/(2*sigma^2)),
+    with d = distance between non-shared endpoints.
     """
 
     import numpy as np
@@ -356,9 +378,6 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
     reinforce = filtering_params.get('reinforce', False)
     symmetrize = filtering_params.get('symmetrize', True)
 
-    # Avoid zero distances
-    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
-
     N = matrix.shape[0]
     filtered_matrix = np.zeros_like(matrix)
 
@@ -367,34 +386,38 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
             if i == j:
                 continue
 
-            # neighbors: edges sharing a node with (i,j)
-            neighbors = set((i, k) for k in range(N) if k != i) \
-                      | set((k, j) for k in range(N) if k != j)
+            # neighbors: edges sharing node with (i,j), exclude self
+            neighbors = {(i, k) for k in range(N) if k != i and k != j} \
+                      | {(k, j) for k in range(N) if k != j and k != i}
 
             val = matrix[i, j]
             weighted_sum = 0.0
             weight_sum = 0.0
 
-            for (k, l) in neighbors:
-                if k == l:
-                    continue
-                dist = distance_matrix[i, k] + distance_matrix[j, l]
-                w = np.exp(-(dist**2) / (2 * sigma**2))
-                weighted_sum += w * matrix[k, l]
+            for (u, v) in neighbors:
+                if u == v or (u == i and v == j):
+                    continue  # 跳过自环和自身边
+
+                # compute distance between non-shared endpoints
+                if u == i:   # neighbor edge is (i,v), shares i
+                    d = distance_matrix[j, v]
+                else:        # neighbor edge is (u,j), shares j
+                    d = distance_matrix[i, u]
+
+                w = np.exp(-(d**2) / (2 * sigma**2))
+                weighted_sum += w * matrix[u, v]
                 weight_sum += w
 
             if weight_sum > 0:
                 neighbor_avg = weighted_sum / weight_sum
             else:
-                # 极端情况下没有有效权重：将邻居平均视为 0（也可改为 val）
-                neighbor_avg = 0.0
+                neighbor_avg = matrix[i, j]  # 没有邻居时保持原值
 
             filtered_matrix[i, j] = val - neighbor_avg
 
     if reinforce:
-        filtered_matrix += matrix  # 等价于 I + (I - D^{-1}W)
+        filtered_matrix += matrix  # 残差增强
 
-    # 保持输出对称（FC 通常是对称的；逐项更新可能引入微小不对称）
     if symmetrize:
         filtered_matrix = 0.5 * (filtered_matrix + filtered_matrix.T)
 
@@ -406,59 +429,6 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
 
     return filtered_matrix
 
-# laplacian graph filtering
-def apply_graph_laplacian_filtering(matrix, distance_matrix,
-                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                   'alpha': 1,
-                                                   'sigma': None,  # 新增
-                                                   'lateral_mode': 'bilateral',
-                                                   'normalized': False,
-                                                   'reinforce': False},
-                                 visualize=False):
-    """
-    ...
-    alpha : 为简化模型设置为1
-    sigma : float or None
-        高斯核的尺度参数。如果为 None，则默认取非零距离的均值。
-    """
-
-    alpha = filtering_params.get('alpha', 1)
-    sigma = filtering_params.get('sigma', None)  # 取出用户自定义 sigma
-    lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
-    normalized = filtering_params.get('normalized', False)
-    reinforce = filtering_params.get('reinforce', False)
-
-    # Step 1: Construct adjacency matrix W (Gaussian kernel)
-    if sigma is None:
-        sigma = np.mean(distance_matrix[distance_matrix > 0])
-    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
-    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
-
-    # Step 2: Compute Laplacian matrix L
-    D = np.diag(W.sum(axis=1))
-    if normalized:
-        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
-        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
-    else:
-        L = D - W
-
-    # Step 3: Construct filter matrix F = I - alpha * L
-    I = np.eye(W.shape[0])
-    F = I - alpha * L
-
-    # Step 4: Apply filtering
-    if lateral_mode == 'bilateral':
-        filtered_matrix = F @ matrix @ F.T
-    elif lateral_mode == 'unilateral':
-        filtered_matrix = F @ matrix
-    else:
-        raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
-
-    # Step 5: Optional reinforcement
-    if reinforce:
-        filtered_matrix += matrix
-
-    return filtered_matrix
 
 # graph spectral filtering
 def apply_truncated_graph_spectral_filtering(matrix, distance_matrix,
