@@ -193,7 +193,11 @@ def plot_bar_by_sr(df: pd.DataFrame, ylabel='Accuracy') -> None:
     fig.tight_layout()
     plt.show()
 
-def plot_std_lines(df: pd.DataFrame, ylabel='Standard Deviation') -> None:
+def plot_std_lines(
+    df: pd.DataFrame, 
+    ylabel: str = 'Standard Deviation',
+    fontsize: int = 16   # 统一字号控制
+) -> None:
     fig, ax = plt.subplots(figsize=(10, 6))
     for method, sub in df.groupby("Method"):
         sub = sub.sort_values("sr", ascending=False)
@@ -203,11 +207,15 @@ def plot_std_lines(df: pd.DataFrame, ylabel='Standard Deviation') -> None:
             color=color_map[str(method)], zorder=3
         )
 
-    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=16)
-    ax.set_ylabel(f"{ylabel} (%)", fontsize=16)
+    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=fontsize)
+    ax.set_ylabel(f"{ylabel} (%)", fontsize=fontsize)
     ax.invert_xaxis()
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
-    ax.legend(fontsize=12)
+
+    ax.tick_params(axis="x", labelsize=fontsize*0.9)
+    ax.tick_params(axis="y", labelsize=fontsize*0.9)
+
+    ax.legend(fontsize=fontsize*0.9, title_fontsize=fontsize)
 
     # 只按 SR 标定刻度，并在刻度处加竖线
     _apply_sr_ticks_and_vlines(ax, df["sr"])
@@ -219,8 +227,9 @@ def plot_accuracy_with_band(
     df: pd.DataFrame,
     mode: str = "sem",     # "ci" | "sem" | "sd"
     level: float = 0.95,   # 置信水平（用于 mode="ci"）
-    n: int | None = None,   # 每个(mean,std)对应的样本量
-    ylabel='Accuracy'
+    n: int | None = None,  # 每个(mean,std)对应的样本量
+    ylabel: str = 'Accuracy',
+    fontsize: int = 16     # 统一字号控制
 ) -> None:
     """
     以“曲线 + 半透明误差带”的方式展示 accuracy。
@@ -228,6 +237,8 @@ def plot_accuracy_with_band(
     - mode="sem" : 均值 ± (std/sqrt(n))。若 n=None，退化为 SD 带并提示。
     - mode="sd"  : 均值 ± std（仅可视化，不建议用于论文正文）。
     """
+    import math
+
     # 尝试使用 t 分布；失败则退化为正态近似
     z = None
     t_ppf = None
@@ -291,17 +302,23 @@ def plot_accuracy_with_band(
         ax.fill_between(x, low, high, alpha=0.15,
                         color=color_map[str(method)], zorder=2)
 
-    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=16)
-    ax.set_ylabel(f"{ylabel} (%)", fontsize=16)
+    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=fontsize)
+    ax.set_ylabel(f"{ylabel} (%)", fontsize=fontsize)
     ax.invert_xaxis()
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
 
     # 只按 SR 标定刻度，并在刻度处加竖线
     _apply_sr_ticks_and_vlines(ax, df["sr"])
 
-    ax.legend(fontsize=12, title="Bands: " + (band_note if 'band_note' in locals() else ""))
+    ax.tick_params(axis="x", labelsize=fontsize*0.9)
+    ax.tick_params(axis="y", labelsize=fontsize*0.9)
+
+    ax.legend(fontsize=fontsize*0.9, title="Bands: " + (band_note if 'band_note' in locals() else ""),
+              title_fontsize=fontsize)
+
     fig.tight_layout()
     plt.show()
+
 
 # -----------------------------
 # 5) 主流程
@@ -644,5 +661,5 @@ def main_appendix():
 # %% main
 if __name__ == "__main__":
     main_portion()
-    # main_summary()
+    main_summary()
     # main_appendix()

@@ -13,8 +13,8 @@ class data:
 
 # %% portion_data_pcc
 identifier_po = [
-    "Baseline: Original observed FNs",
-    "Proposing: Gaussian Diffusion Inverse denoised FNs (sigma=0.1 lambda=0.01)",
+    "Baseline: Original observed FN",
+    "Proposing: Proposing method denoised FN (sigma=0.1 lambda=0.01)",
 ]
 
 portion_pcc_accuracy = {
