@@ -677,6 +677,18 @@ def normal_evaluation_framework():
                                                  subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
                                                  save=True)
         
+        # exp_graph_spectral_filtering; highpass; t = 1, 2, 3, 4, 5, 10, 20
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 0.1, 'mode': 'highpass',
+                                                                   'normalized': True, 'reinforce': False},
+                                                 selection_rate=selection_rate, feature_cm='pcc',
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
         # # exp_graph_spectral_filtering; highpass; t = 1, 5, 10, 20
         # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
         #                                          filtering_params={'computation': 'exp_graph_spectral_filtering', 
