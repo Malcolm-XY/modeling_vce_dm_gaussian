@@ -266,7 +266,6 @@ def apply_diffusion_inverse(matrix, distance_matrix,
 
     return filtered_matrix
 
-
 def apply_diffusion_inverse_(matrix, distance_matrix, 
                             filtering_params={'computation': 'diffusion_inverse',
                                               'sigma': 0.1, 'lambda_reg': 0.01,
@@ -519,6 +518,60 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
             utils_visualization.draw_projection(filtered_matrix, 'After FN-Laplacian Filtering (normalized)')
         except ModuleNotFoundError:
             print("Visualization module not found.")
+
+    return filtered_matrix
+
+# laplacian graph filtering
+def apply_graph_laplacian_filtering(matrix, distance_matrix,
+                                 filtering_params={'computation': 'graph_laplacian_filtering',
+                                                   'alpha': 1,
+                                                   'sigma': None,  # 新增
+                                                   'lateral_mode': 'bilateral',
+                                                   'normalized': False,
+                                                   'reinforce': False},
+                                 visualize=False):
+    """
+    ...
+    alpha : 为简化模型设置为1
+    sigma : float or None
+        高斯核的尺度参数。如果为 None，则默认取非零距离的均值。
+    """
+
+    alpha = filtering_params.get('alpha', 1)
+    sigma = filtering_params.get('sigma', None)  # 取出用户自定义 sigma
+    lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
+    normalized = filtering_params.get('normalized', False)
+    reinforce = filtering_params.get('reinforce', False)
+
+    # Step 1: Construct adjacency matrix W (Gaussian kernel)
+    if sigma is None:
+        sigma = np.mean(distance_matrix[distance_matrix > 0])
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+    W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+
+    # Step 2: Compute Laplacian matrix L
+    D = np.diag(W.sum(axis=1))
+    if normalized:
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
+        L = np.eye(W.shape[0]) - D_inv_sqrt @ W @ D_inv_sqrt
+    else:
+        L = D - W
+
+    # Step 3: Construct filter matrix F = I - alpha * L
+    I = np.eye(W.shape[0])
+    F = I - alpha * L
+
+    # Step 4: Apply filtering
+    if lateral_mode == 'bilateral':
+        filtered_matrix = F @ matrix @ F.T
+    elif lateral_mode == 'unilateral':
+        filtered_matrix = F @ matrix
+    else:
+        raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
+
+    # Step 5: Optional reinforcement
+    if reinforce:
+        filtered_matrix += matrix
 
     return filtered_matrix
 
