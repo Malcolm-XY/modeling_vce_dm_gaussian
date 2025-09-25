@@ -352,7 +352,7 @@ def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
                                                       'symmetrize': True,
                                                       # 额外：加速/稀疏选项
                                                       'knn': None,          # int 或 None：每行只保留 k 个最近邻
-                                                      'normalized': True    # True: 归一化(减加权平均)；False: 未归一化(减加权和)
+                                                      'normalized': False    # True: 归一化(减加权平均)；False: 未归一化(减加权和)
                                                       },
                                                   visualize=False
                                                   ):
@@ -525,31 +525,78 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
 def apply_graph_laplacian_filtering(matrix, distance_matrix,
                                  filtering_params={'computation': 'graph_laplacian_filtering',
                                                    'alpha': 1,
-                                                   'sigma': None,  # 新增
+                                                   'sigma': 'knn_median',        # float / "mean_nonzero" / "knn_median"
+                                                   'k': 3,               # for "knn_median"
+                                                   'mode': 'lowpass',    # "lowpass" or "highpass"
                                                    'lateral_mode': 'bilateral',
                                                    'normalized': False,
                                                    'reinforce': False},
                                  visualize=False):
     """
-    ...
-    alpha : 为简化模型设置为1
-    sigma : float or None
-        高斯核的尺度参数。如果为 None，则默认取非零距离的均值。
+    Apply Graph Laplacian Filtering (low-pass or high-pass) to a functional connectivity matrix.
+
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix.
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise electrode distance matrix.
+    filtering_params : dict
+        alpha : float
+            Scaling factor of Laplacian, default=1.
+        sigma : float or str
+            Gaussian kernel scale.
+            - float : directly used as sigma
+            - "mean_nonzero" : mean of nonzero distances
+            - "knn_median" : median of k-nearest-neighbor mean distances
+        k : int
+            Number of neighbors for "knn_median" mode.
+        mode : {"lowpass","highpass"}
+            Filter type.
+        lateral_mode : {"bilateral","unilateral"}
+            Apply filter on both sides or one side.
+        normalized : bool
+            Use normalized Laplacian if True.
+        reinforce : bool
+            Add residual connection if True.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray, shape (N, N)
+        Filtered connectivity matrix.
     """
 
     alpha = filtering_params.get('alpha', 1)
-    sigma = filtering_params.get('sigma', None)  # 取出用户自定义 sigma
+    sigma = filtering_params.get('sigma', None)
+    k = filtering_params.get('k', 3)
+    mode = filtering_params.get('mode', 'lowpass')
     lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
     normalized = filtering_params.get('normalized', False)
     reinforce = filtering_params.get('reinforce', False)
 
-    # Step 1: Construct adjacency matrix W (Gaussian kernel)
-    if sigma is None:
+    # Step 1: Determine sigma
+    if isinstance(sigma, (int, float)):
+        pass  # use directly
+    elif sigma == "mean_nonzero" or sigma is None:
         sigma = np.mean(distance_matrix[distance_matrix > 0])
+    elif sigma == "knn_median":
+        N = distance_matrix.shape[0]
+        knn_means = []
+        for i in range(N):
+            dists = np.sort(distance_matrix[i][distance_matrix[i] > 0])
+            if len(dists) >= k:
+                knn_means.append(np.mean(dists[:k]))
+        sigma = np.median(knn_means)
+    else:
+        raise ValueError(f"Unknown sigma mode: {sigma}")
+
+    # Avoid division by zero
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+
+    # Step 2: Construct adjacency matrix W (Gaussian kernel)
     W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
 
-    # Step 2: Compute Laplacian matrix L
+    # Step 3: Compute Laplacian matrix L
     D = np.diag(W.sum(axis=1))
     if normalized:
         D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D)))
@@ -557,11 +604,16 @@ def apply_graph_laplacian_filtering(matrix, distance_matrix,
     else:
         L = D - W
 
-    # Step 3: Construct filter matrix F = I - alpha * L
+    # Step 4: Construct filter matrix
     I = np.eye(W.shape[0])
-    F = I - alpha * L
+    if mode == 'lowpass':
+        F = I - alpha * L
+    elif mode == 'highpass':
+        F = alpha * L
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
 
-    # Step 4: Apply filtering
+    # Step 5: Apply filtering
     if lateral_mode == 'bilateral':
         filtered_matrix = F @ matrix @ F.T
     elif lateral_mode == 'unilateral':
@@ -569,7 +621,7 @@ def apply_graph_laplacian_filtering(matrix, distance_matrix,
     else:
         raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
 
-    # Step 5: Optional reinforcement
+    # Step 6: Optional reinforcement
     if reinforce:
         filtered_matrix += matrix
 
