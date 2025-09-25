@@ -347,7 +347,6 @@ def apply_generalized_surface_laplacian_filtering(matrix, distance_matrix,
 
     return M_filtered
 
-
 # generalized surface laplacian filtering
 def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
                                                    filtering_params={'computation': 'generalized_surface_laplacian_filtering',
@@ -428,7 +427,6 @@ def apply_generalized_surface_laplacian_filtering_(matrix, distance_matrix,
             print("Visualization module not found.")
 
     return filtered_matrix
-
 
 # graph spectral filtering
 def apply_truncated_graph_spectral_filtering(matrix, distance_matrix,
