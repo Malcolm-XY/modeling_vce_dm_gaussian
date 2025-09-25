@@ -176,6 +176,100 @@ def apply_gaussian_filter(matrix, distance_matrix,
 def apply_diffusion_inverse(matrix, distance_matrix, 
                             filtering_params={'computation': 'diffusion_inverse',
                                               'sigma': 0.1, 'lambda_reg': 0.01,
+                                              'lateral_mode': 'bilateral', 
+                                              'reinforce': False,
+                                              'normalization': 'row'},  # 新增参数
+                            visualize=False):
+    """
+    Applies a spatial residual filter to a functional connectivity (FC) matrix
+    to suppress local spatial redundancy (e.g., volume conduction effects).
+
+    Parameters
+    ----------
+    matrix : np.ndarray, shape (N, N)
+        Input functional connectivity matrix.
+    distance_matrix : np.ndarray, shape (N, N)
+        Pairwise distance matrix between channels.
+    params : dict
+        Filtering parameters:
+            - 'sigma': float, spatial Gaussian kernel width. If None, uses mean of non-zero distances.
+            - 'lambda_reg': float, regularization term for pseudoinverse mode.
+            - 'lateral_mode': 'bilateral' or 'unilateral'.
+            - 'reinforce': bool, whether to add original matrix back.
+            - 'normalization': 'row' (default, row-stochastic) or 'symmetric'.
+    visualize : bool
+        If True, visualize before and after matrices.
+
+    Returns
+    -------
+    filtered_matrix : np.ndarray
+        Filtered connectivity matrix.
+    """
+
+    if visualize:
+        try:
+            utils_visualization.draw_projection(matrix, 'Before Spatial Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    lateral_mode = filtering_params.get('lateral_mode', 'bilateral')
+    sigma = filtering_params.get('sigma', 0.1)
+    lambda_reg = filtering_params.get('lambda_reg', 0.01)
+    normalization = filtering_params.get('normalization', 'row')
+
+    # Avoid zero distances
+    distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
+
+    # Step 1: Construct Gaussian kernel (SM)
+    gaussian_kernel = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
+
+    if normalization == 'row':
+        # 行归一化 (row stochastic)
+        row_sums = gaussian_kernel.sum(axis=1, keepdims=True)
+        gaussian_kernel = gaussian_kernel / (row_sums + 1e-12)
+
+    elif normalization == 'sym': # symmetric
+        # 对称归一化 (类似 Graph Laplacian 的归一化)
+        D = np.diag(gaussian_kernel.sum(axis=1))
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D) + 1e-12))
+        gaussian_kernel = D_inv_sqrt @ gaussian_kernel @ D_inv_sqrt
+
+    else:
+        raise ValueError(f"Unknown normalization: {normalization}")
+
+    # Step 2: Construct residual kernel (Tikhonov regularized inverse)
+    I = np.eye(gaussian_kernel.shape[0])
+    G = gaussian_kernel
+    try:
+        residual_kernel = np.linalg.inv(G.T @ G + lambda_reg * I) @ G.T
+    except np.linalg.LinAlgError:
+        print('LinAlgError: fallback to pseudo-inverse')
+        residual_kernel = np.linalg.pinv(G)
+
+    # Step 3: Apply filtering
+    if lateral_mode == 'bilateral':
+        filtered_matrix = residual_kernel @ matrix @ residual_kernel.T
+    elif lateral_mode == 'unilateral':
+        filtered_matrix = residual_kernel @ matrix
+    else:
+        raise ValueError(f"Unknown lateral_mode: {lateral_mode}")
+    
+    # Step 4: Reinforce
+    if filtering_params.get('reinforce', False):
+        filtered_matrix += matrix
+    
+    if visualize:
+        try:
+            utils_visualization.draw_projection(filtered_matrix, 'After Spatial Filtering')
+        except ModuleNotFoundError:
+            print("Visualization module not found.")
+
+    return filtered_matrix
+
+
+def apply_diffusion_inverse_(matrix, distance_matrix, 
+                            filtering_params={'computation': 'diffusion_inverse',
+                                              'sigma': 0.1, 'lambda_reg': 0.01,
                                               'lateral_mode': 'bilateral', 'reinforce': False}, 
                             visualize=False):
     """
