@@ -634,49 +634,10 @@ def normal_evaluation_framework():
         #                                          save=True)
         
         #-----------------------------------------------------------------------
-        # graph_laplacian_filtering; alpha = 0.1, 0.5, 1; sigma = mean_nonzero; highpass; 'normalized': False
+        # graph_laplacian_filtering; alpha = 1; sigma = 0.05, 0.1, 0.25, ...; highpass; 'normalized': False
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
                                                  filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 0.1, 'sigma': 'mean_nonzero',
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='pcc',
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 0.25, 'sigma': 'mean_nonzero',
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='pcc',
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 0.5, 'sigma': 'mean_nonzero',
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm='pcc',
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 'mean_nonzero',
+                                                                   'alpha': 1, 'sigma': 0.125,
                                                                    'mode': 'highpass',
                                                                    'lateral_mode': 'bilateral',
                                                                    'normalized': False, 'reinforce': False},
@@ -771,4 +732,4 @@ if __name__ == '__main__':
     
     # %% End
     from cnn_val_circle import end_program_actions
-    end_program_actions(play_sound=True, shutdown=True, countdown_seconds=120)
+    end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)
