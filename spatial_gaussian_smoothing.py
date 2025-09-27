@@ -741,7 +741,8 @@ def apply_truncated_graph_spectral_filtering(matrix, distance_matrix,
 # spectral graph filtering
 def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
                                    filtering_params={'computation': 'exp_graph_spectral_filtering',
-                                                     't': 10,
+                                                     'sigma': None,
+                                                     't': 1,
                                                      'mode': 'lowpass',   # 可选 'lowpass' 或 'highpass'
                                                      'normalized': False,
                                                      'reinforce': False},
@@ -774,7 +775,8 @@ def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
     filtered_matrix : np.ndarray
         The spectrally filtered functional connectivity matrix.
     """
-    t = filtering_params.get('t', 10)
+    t = filtering_params.get('t', 1)
+    sigma = filtering_params.get('sigma', None)
     mode = filtering_params.get('mode', 'lowpass').lower()
     normalized = filtering_params.get('normalized', False)
     reinforce = filtering_params.get('reinforce', False)
@@ -786,7 +788,8 @@ def apply_exp_graph_spectral_filtering(matrix, distance_matrix,
             print("Visualization module not found.")
 
     # Step 1: Construct adjacency matrix W (Gaussian kernel)
-    sigma = np.mean(distance_matrix[distance_matrix > 0])
+    if sigma is None:
+        sigma = np.mean(distance_matrix[distance_matrix > 0])
     distance_matrix = np.where(distance_matrix == 0, 1e-6, distance_matrix)
     W = np.exp(-np.square(distance_matrix) / (2 * sigma ** 2))
 
