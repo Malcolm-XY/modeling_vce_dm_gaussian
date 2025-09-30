@@ -714,7 +714,7 @@ def normal_evaluation_framework():
         # exp_graph_spectral_filtering; highpass; t = 1; 'normalized': False       
         cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
                                                  filtering_params={'computation': 'exp_graph_spectral_filtering', 
-                                                                   'sigma': 0.1,
+                                                                   'sigma': 0.05,
                                                                    't': 1, 'mode': 'lowpass',
                                                                    'normalized': False, 'reinforce': False},
                                                  selection_rate=selection_rate, feature_cm='pcc',
