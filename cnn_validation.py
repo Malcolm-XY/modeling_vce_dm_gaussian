@@ -86,8 +86,8 @@ def test_model(model, val_loader, device, criterion):
             all_preds.extend(predicted.cpu().numpy())
 
     accuracy = 100 * correct_predictions / total_samples
-    recall = recall_score(all_labels, all_preds, average='weighted')
-    f1 = f1_score(all_labels, all_preds, average='weighted')
+    recall = 100 * recall_score(all_labels, all_preds, average='weighted')
+    f1 = 100 * f1_score(all_labels, all_preds, average='weighted')
 
     print(f'Validation Accuracy: {accuracy:.2f}%, Loss: {total_loss / len(val_loader):.4f}, Recall: {recall:.2f}, F1 Score: {f1:.2f}\n')
 
@@ -205,9 +205,9 @@ def cnn_cross_validation(model, X, y, folds=5, batch_size=128, epochs=30, learni
 
     avg_metrics = {
         'accuracy': sum(r['accuracy'] for r in results) / folds,
+        'f1_score': sum(r['f1_score'] for r in results) / folds,
         'loss': sum(r['loss'] for r in results) / folds,
         'recall': sum(r['recall'] for r in results) / folds,
-        'f1_score': sum(r['f1_score'] for r in results) / folds
     }
 
     print(f"Average Metrics Across {folds} Folds: {avg_metrics}\n")
