@@ -41,9 +41,9 @@ def matrix_plot(accuracy_data, lambda_values, sigma_values, fontsize=12):
         )
 
         if show_xlabel:
-            ax.set_xlabel('sigma', fontsize=fontsize)
+            ax.set_xlabel('σ', fontsize=fontsize)
         if show_ylabel:
-            ax.set_ylabel('log10(lambda)', fontsize=fontsize)
+            ax.set_ylabel('log10(λ)', fontsize=fontsize)
 
         ax.tick_params(axis='x', labelsize=fontsize * 0.8)
         ax.tick_params(axis='y', labelsize=fontsize * 0.8)
