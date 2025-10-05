@@ -1287,7 +1287,7 @@ if __name__ == "__main__":
                             feature='plv', band='joint', in_file_type='.h5',
                             save=True, verbose=False, visualization=True)
     
-    fcs_global_averaged_ = utils_feature_loading.read_fcs_global_average('seed', 'pcc')
+    fcs_global_averaged_ = utils_feature_loading.read_fcs_global_average('seed', 'plv')
     
     # %% End program actions
     # utils.end_program_actions(play_sound=True, shutdown=False, countdown_seconds=120)
