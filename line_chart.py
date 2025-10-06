@@ -14,13 +14,11 @@ Refactored on Thu Aug 14 2025
 - 通用绘图函数（折线 + 误差棒、SR 分面柱状图、std 折线）
 - 数据一致性校验与友好报错
 """
-import math
 from typing import List
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 
 # -----------------------------
 # 1) 原始数据（单一入口）
@@ -62,7 +60,7 @@ def _parse_identifiers(ident_list: List[str]) -> tuple[list[str], list[str]]:
 
 def build_dataframe(data: dict, identifier) -> pd.DataFrame:
     global legend_name, method_order_short, color_map
-
+    
     # 基础长度校验
     data, sr, sd = data["data"], data["sr"], data["std"]
     if not (len(data) == len(sr) == len(sd)):
@@ -166,7 +164,7 @@ def plot_accuracy_lines(df: pd.DataFrame, ylabel='Accuracy') -> None:
     fig.tight_layout()
     plt.show()
 
-def plot_bar_by_sr(df: pd.DataFrame, ylabel='Accuracy') -> None:
+def plot_bar_by_sr(df: pd.DataFrame, ylabel='magnitude') -> None:
     selection_rates = sorted(df["sr"].unique(), reverse=True)
     methods = list(df["Method"].cat.categories)
 
