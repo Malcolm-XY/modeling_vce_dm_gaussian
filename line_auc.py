@@ -170,11 +170,14 @@ def build_dataframe(data: dict, identifier: List[str]) -> pd.DataFrame:
 
 def plot_data_with_band(
     df: pd.DataFrame,
+    data: str = 'data',
+    std: str = 'std',
+    ylabel: str = 'Accuracy',
     mode: str = "sem",     # "ci" | "sem" | "sd"
     level: float = 0.95,   # 置信水平（用于 mode="ci"）
     n: int | None = None,  # 每个(mean,std)对应的样本量
-    ylabel: str = 'Accuracy',
-    fontsize: int = 16     # 统一字号控制
+    fontsize: int = 16,     # 统一字号控制
+    cmap = plt.colormaps['viridis'],
 ) -> None:
     import math
 
@@ -196,14 +199,15 @@ def plot_data_with_band(
                     math.sqrt(math.sqrt((2/(math.pi*a) + ln/2)**2 - ln/a) - (2/(math.pi*a) + ln/2)),
                     s
                 )
-                
+    
     # plot
+    cmap = cmap
     fig, ax = plt.subplots(figsize=(10, 6))
-    for method, sub in df.groupby("Method"):
+    for i, (method, sub) in enumerate(df.groupby("identifier")):
         sub = sub.sort_values("sr", ascending=False)
         x = sub["sr"].to_numpy()
-        m = sub["data"].to_numpy()
-        s = sub["std"].to_numpy()
+        m = sub[data].to_numpy()
+        s = sub[std].to_numpy()
         
         # Error Bar
         if mode == "sd":
@@ -235,13 +239,10 @@ def plot_data_with_band(
         else:
             raise ValueError("mode must be one of {'ci','sem','sd'}")
         # Error Bar End
-            
+        
         # Plot Lines + Error Bars
-        ax.plot(x, m, marker="o", linewidth=2.0,
-                label=legend_name.get(method, str(method)),
-                color=color_map[str(method)], zorder=3)
-        ax.fill_between(x, low, high, alpha=0.15,
-                        color=color_map[str(method)], zorder=2)
+        ax.plot(x, m, marker="o", linewidth=2.0, label=method, zorder=3, color=cmap(i/len(df.groupby("identifier"))))
+        ax.fill_between(x, low, high, alpha=0.15, zorder=2, color=cmap(i/len(df.groupby("identifier"))))
 
     ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=fontsize)
     ax.set_ylabel(f"{ylabel} (%)", fontsize=fontsize)
@@ -274,17 +275,6 @@ def plot_bar_by_method(
     xtick_rotation: float = 30,   # ✅ X 轴角度控制
     wrap_width: int | None = None # ✅ 自动换行：超过多少字符自动分行
 ) -> None:
-    """
-    绘制以方法为横轴的柱状图（支持误差棒、文字注释、可旋转标签、自动换行）
-
-    参数：
-    - df: DataFrame，需包含 ["Method", "data", "std"]
-    - mode: 误差类型，"sd" 或 "sem"
-    - n: 样本数，用于 SEM
-    - wrap_width: 超过此长度自动换行（如 10 -> 超过10字符自动分行）
-    """
-    import numpy as np
-    import matplotlib.pyplot as plt
     import textwrap
 
     # 若 df 含重复 Method，则聚合
@@ -378,16 +368,47 @@ def sbpe_portion():
     portion_pcc_bpes_dic['std'] = portion_pcc_bpes_std
     
     df = build_dataframe(portion_pcc_bpes_dic, identifier_po)
+    df = pd.DataFrame()
+    
     print("Methods (short order):", list(df["Method"].cat.categories))
     print("SRs:", sorted(df["sr"].unique(), reverse=True))
     print(df.head(10))
     plot_data_with_band(df, mode="sem", level=0.95, n=30, ylabel='BPE(Balanced Performance Efficiency)')
+
+def sbpe_portion():
+    from line_chart_data import portion_data_pcc
+    portion_pcc_accuracy_dic = portion_data_pcc.accuracy
     
+    df = pd.DataFrame(portion_pcc_accuracy_dic)
+    
+    sbpes, sbpe_stds = [], []
+    for method, sub in df.groupby("identifier", sort=False):
+        sub = sub.sort_values("sr", ascending=False)
+        srs = sub["sr"].to_numpy()
+        accuracies = sub["data"].to_numpy()
+        stds = sub["std"].to_numpy()
+        
+        sbpes_ = balanced_performance_efficiency_single_points(srs, accuracies)
+        sbpe_stds_ = balanced_performance_efficiency_single_points(srs, stds)
+        
+        # print(srs)
+        # print(accuracies)
+        print(f"Methods: {method}", f"SBPEs: {sbpes_}")
+        
+        sbpes.extend(sbpes_)
+        sbpe_stds.extend(sbpe_stds_)
+        
+    sbpes_dic = {"SBPEs": sbpes, "SBPE_stds": sbpe_stds}
+    df = pd.concat([df, pd.DataFrame(sbpes_dic)], axis=1)
+    
+    plot_data_with_band(df, data='SBPEs', std='SBPE_stds', ylabel='BPE(Balanced Performance Efficiency)', mode="sem", n=30)
+    
+    return df
+
 def mbpe_portion():
     from line_chart_data import portion_data_pcc
     portion_pcc_accuracy_dic = portion_data_pcc.accuracy
     
-    import pandas as pd
     df = pd.DataFrame(portion_pcc_accuracy_dic)
     
     mbpe, mbpe_std = [], []
@@ -411,20 +432,14 @@ def mbpe_portion():
         mbpe_std.extend(mbpe_std_)
     
     mbpe_dic = {"MBPE": mbpe, "MBPE_std": mbpe_std}
-    
     df = pd.concat([df, pd.DataFrame(mbpe_dic)], axis=1)
+    
+    plot_bar_by_method(df, mode="sem", n=30, xtick_rotation=45, wrap_width=30, figsize = (10,15))
     
     return df
     
-    # df = build_dataframe(portion_pcc_mbpes_dic, identifier_po)
-    # print("Methods (short order):", list(df["Method"].cat.categories))
-    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    # print(df.head(10))
-    # plot_bar_by_method(df, mode="sem", n=30, xtick_rotation=90, wrap_width=15)
-    
 # %% main
 if __name__ == "__main__":
-    # sbpe_portion()
+    df = sbpe_portion()
     df = mbpe_portion()
     
-    plot_bar_by_method(df, mode="sem", n=30, xtick_rotation=45, wrap_width=30)
