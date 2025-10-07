@@ -49,7 +49,7 @@ def _parse_identifiers(ident_list: List[str]) -> tuple[list[str], list[str]]:
     """
     shorts, longs = [], []
     for raw in ident_list:
-        parts = [p.strip() for p in str(raw).split(",", 1)]
+        parts = [p.strip() for p in str(raw).split(":", 1)]
         if len(parts) == 2 and parts[0] and parts[1]:
             s, l = parts[0], parts[1]
         else:
@@ -194,9 +194,10 @@ def plot_bar_by_sr(df: pd.DataFrame, ylabel='magnitude') -> None:
 def plot_std_lines(
     df: pd.DataFrame, 
     ylabel: str = 'Standard Deviation',
+    figsize=(10, 6),
     fontsize: int = 16   # 统一字号控制
 ) -> None:
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=figsize)
     for method, sub in df.groupby("Method"):
         sub = sub.sort_values("sr", ascending=False)
         ax.plot(
@@ -227,6 +228,7 @@ def plot_accuracy_with_band(
     level: float = 0.95,   # 置信水平（用于 mode="ci"）
     n: int | None = None,  # 每个(mean,std)对应的样本量
     ylabel: str = 'Accuracy',
+    figsize=(10, 6),
     fontsize: int = 16     # 统一字号控制
 ) -> None:
     """
@@ -256,7 +258,7 @@ def plot_accuracy_with_band(
                     s
                 )
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=figsize)
     for method, sub in df.groupby("Method"):
         sub = sub.sort_values("sr", ascending=False)
         x = sub["sr"].to_numpy()
@@ -317,7 +319,6 @@ def plot_accuracy_with_band(
     fig.tight_layout()
     plt.show()
 
-
 # -----------------------------
 # 5) 主流程
 # -----------------------------
@@ -337,7 +338,7 @@ def main_portion():
     print(df.head(10))
 
     # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
+    plot_accuracy_with_band(df, mode="sem", level=0.95, n=30)
 
     # 图 2：Std 折线
     plot_std_lines(df)
@@ -350,43 +351,43 @@ def main_portion():
     print(df.head(10))
 
     # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
+    plot_accuracy_with_band(df, mode="sem", level=0.95, n=30, ylabel='F1 score')
 
     # 图 2：Std 折线
     plot_std_lines(df)
     
-    # -----------------------------
-    # accuracy; plv
-    # -----------------------------
-    from line_chart_data import portion_data_plv
-    identifier_po = portion_data_plv.identifier
-    portion_plv_accuracy = portion_data_plv.accuracy
-    portion_plv_f1score = portion_data_plv.f1score
+    # # -----------------------------
+    # # accuracy; plv
+    # # -----------------------------
+    # from line_chart_data import portion_data_plv
+    # identifier_po = portion_data_plv.identifier
+    # portion_plv_accuracy = portion_data_plv.accuracy
+    # portion_plv_f1score = portion_data_plv.f1score
     
-    df = build_dataframe(portion_plv_accuracy, identifier_po)
+    # df = build_dataframe(portion_plv_accuracy, identifier_po)
 
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
+    # print("Methods (short order):", list(df["Method"].cat.categories))
+    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
+    # print(df.head(10))
 
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
+    # # 图 1：误差带（把 n 改成你的真实重复次数）
+    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
 
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    # # 图 2：Std 折线
+    # plot_std_lines(df)
 
-    # f1 score; plv
-    df = build_dataframe(portion_plv_f1score, identifier_po)
+    # # f1 score; plv
+    # df = build_dataframe(portion_plv_f1score, identifier_po)
 
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
+    # print("Methods (short order):", list(df["Method"].cat.categories))
+    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
+    # print(df.head(10))
 
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
+    # # 图 1：误差带（把 n 改成你的真实重复次数）
+    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
 
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    # # 图 2：Std 折线
+    # plot_std_lines(df)
 
 def main_summary():
     # -----------------------------
@@ -399,10 +400,10 @@ def main_summary():
     print(df.head(10))
 
     # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
+    plot_accuracy_with_band(df, mode="sem", n=30, figsize=(11,6))
 
     # 图 2：Std 折线
-    plot_std_lines(df)
+    plot_std_lines(df, figsize=(11,6))
 
     # f1 score; pcc
     df = build_dataframe(summary_pcc_f1score, identifier_sm)
@@ -412,38 +413,38 @@ def main_summary():
     print(df.head(10))
 
     # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
+    plot_accuracy_with_band(df, mode="sem", n=30, ylabel='F1 score', figsize=(11,6))
 
     # 图 2：Std 折线
-    plot_std_lines(df)
+    plot_std_lines(df, figsize=(11,6))
     
-    # -----------------------------
-    # accuracy; plv
-    # -----------------------------
-    df = build_dataframe(summary_plv_accuracy, identifier_sm)
+    # # -----------------------------
+    # # accuracy; plv
+    # # -----------------------------
+    # df = build_dataframe(summary_plv_accuracy, identifier_sm)
 
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
+    # print("Methods (short order):", list(df["Method"].cat.categories))
+    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
+    # print(df.head(10))
 
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
+    # # 图 1：误差带（把 n 改成你的真实重复次数）
+    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
 
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    # # 图 2：Std 折线
+    # plot_std_lines(df)
 
-    # f1 score; plv
-    df = build_dataframe(summary_plv_f1score, identifier_sm)
+    # # f1 score; plv
+    # df = build_dataframe(summary_plv_f1score, identifier_sm)
 
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
+    # print("Methods (short order):", list(df["Method"].cat.categories))
+    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
+    # print(df.head(10))
 
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
+    # # 图 1：误差带（把 n 改成你的真实重复次数）
+    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
 
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    # # 图 2：Std 折线
+    # plot_std_lines(df)
 
 def main_appendix():
     # %% graph laplacian

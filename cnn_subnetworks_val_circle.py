@@ -601,7 +601,6 @@ def normal_evaluation_framework():
     
     # selection rates
     selection_rate_list = [1.0, 0.75, 0.5, 0.3, 0.2, 0.1, 0.05]
-    selection_rate_list = [0.3, 0.2, 0.1, 0.05]
     for selection_rate in selection_rate_list:
         #-----------------------------------------------------------------------
         # # original functional connectivity networks
