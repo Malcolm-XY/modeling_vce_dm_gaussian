@@ -1,120 +1,59 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Aug 15 21:41:09 2025
+Created on Fri Oct  3 22:45:31 2025
 
-@author: admin
+@author: 18307
 """
 
-# -*- coding: utf-8 -*-
-"""
-Refactored on Thu Aug 14 2025
+# -----------------------------
+def selection_robust_auc(srs, accuracies):
+    aucs = []
+    n = len(srs) - 1
+    for i in range(n):
+        auc = (srs[i]-srs[i+1]) * (accuracies[i]+accuracies[i+1])/2
+        aucs.append(auc)
+        
+    auc = np.sum(aucs) * 1/(srs[0]-srs[-1])
+    
+    return auc
 
-- 单一数据定义入口
-- 自动补齐 Identifier 并派生 Method（短标签）与 MethodFull（长标题）
-- 通用绘图函数（折线 + 误差棒、SR 分面柱状图、std 折线）
-- 数据一致性校验与友好报错
-"""
-from typing import List
+def balanced_performance_efficiency_single_point(sr, accuracy, alpha=1, beta=1):
+    bpe = alpha * (1-sr**2) * beta * accuracy
+    return bpe
 
+def balanced_performance_efficiency_single_points(srs, accuracies, alpha=1, beta=1):
+    bpes = []
+    for i, sr in enumerate(srs):
+        bpe = alpha * (1-sr**2) * beta * accuracies[i]
+        bpes.append(bpe)
+        
+    return bpes
+
+def balanced_performance_efficiency_multiple_points(srs, accuracies, alpha=1, beta=1):
+    bpe_term = []
+    normalization_term = []
+    n = len(srs) - 1
+    for i in range(n):
+         bpe_area = (srs[i] - srs[i+1]) * (accuracies[i] * (1-srs[i]**2) + accuracies[i+1] * (1-srs[i+1]**2)) * 1/2 * alpha
+         bpe_term.append(bpe_area)
+         
+         normalization_area = (srs[i] - srs[i+1]) * ((1-srs[i]**2) + (1-srs[i+1]**2)) * 1/2 * beta
+         normalization_term.append(normalization_area)
+         
+    bpe = np.sum(bpe_term)
+    bpe_normalized = bpe/np.sum(normalization_term)
+    
+    return bpe_normalized
+
+# -----------------------------
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from typing import List
+import warnings, textwrap
+from scipy import stats as st
 
-# -----------------------------
-# 1) 原始数据（单一入口）
-# -----------------------------
-from line_chart_data import summary_data_pcc
-identifier_sm = summary_data_pcc.identifier
-summary_pcc_accuracy = summary_data_pcc.accuracy
-summary_pcc_f1score = summary_data_pcc.f1score
-
-from line_chart_data import summary_data_plv
-identifier_sm = summary_data_plv.identifier
-summary_plv_accuracy = summary_data_plv.accuracy
-summary_plv_f1score = summary_data_plv.f1score
-
-# 这些会在 build_dataframe 后被自动设置
-legend_name: dict[str, str] = {}
-method_order_short: List[str] = []
-color_map: dict[str, tuple] = {}
-
-
-# -----------------------------
-# 2) 数据整理与验证
-# -----------------------------
-def _parse_identifiers(ident_list: List[str]) -> tuple[list[str], list[str]]:
-    """
-    将 "short, long" 形式的条目解析成短/长标签。
-    缺逗号时，短=全文，长=全文；多逗号时，仅按第一个逗号切分。
-    """
-    shorts, longs = [], []
-    for raw in ident_list:
-        parts = [p.strip() for p in str(raw).split(":", 1)]
-        if len(parts) == 2 and parts[0] and parts[1]:
-            s, l = parts[0], parts[1]
-        else:
-            s = l = str(raw).strip()
-        shorts.append(s)
-        longs.append(l)
-    return shorts, longs
-
-def build_dataframe(data: dict, identifier) -> pd.DataFrame:
-    global legend_name, method_order_short, color_map
-    
-    # 基础长度校验
-    data, sr, sd = data["data"], data["sr"], data["std"]
-    if not (len(data) == len(sr) == len(sd)):
-        raise ValueError(f"Length mismatch: accuracy={len(data)}, sr={len(sr)}, std={len(sd)}")
-
-    # 解析 Identifier
-    methods_short, methods_full = _parse_identifiers(identifier)
-    n_methods = len(methods_short)
-    total = len(data)
-    if total % n_methods != 0:
-        raise ValueError(f"Total rows ({total}) not divisible by number of methods ({n_methods}).")
-    per_method = total // n_methods
-
-    # 构造 Method / MethodFull 列（按块拼接：每个方法连续 per_method 行）
-    method_col = [ms for ms in methods_short for _ in range(per_method)]
-    method_full_col = [mf for mf in methods_full for _ in range(per_method)]
-
-    df = pd.DataFrame({
-        "Method": method_col,
-        "MethodFull": method_full_col,
-        "sr": sr,
-        "data": data,
-        "std": sd,
-    })
-
-    # 一致性校验：每种方法的 SR 集应相同
-    sr_sets = df.groupby("Method")["sr"].apply(lambda s: tuple(s.to_list()))
-    if len(set(sr_sets)) != 1:
-        raise ValueError(f"Inconsistent SR sequences across methods: {sr_sets.to_dict()}")
-
-    # 固定短标签顺序（按 Identifier 顺序）；SR 从大到小
-    method_order_short = methods_short[:]  # 按输入顺序
-    df["Method"] = pd.Categorical(df["Method"], categories=method_order_short, ordered=True)
-    df = df.sort_values(["Method", "sr"], ascending=[True, False]).reset_index(drop=True)
-
-    # legend_name & color_map 自动推断
-    legend_name = {s: f for s, f in zip(methods_short, methods_full)}
-    cmap = plt.cm.tab10.colors
-    if len(method_order_short) > len(cmap):
-        palette = [cmap[i % len(cmap)] for i in range(len(method_order_short))]
-    else:
-        palette = cmap[:len(method_order_short)]
-    color_map = dict(zip(method_order_short, palette))
-
-    # 终检：总行数 = 方法数 × SR数
-    n_sr = df["sr"].nunique()
-    if len(df) != n_methods * n_sr:
-        raise ValueError(f"Row count {len(df)} != methods({n_methods}) × SR({n_sr}).")
-
-    return df
-
-# -----------------------------
-# 3) 公用：按 SR 设刻度并加竖直虚线
-# -----------------------------
 def _apply_sr_ticks_and_vlines(ax: plt.Axes, sr_values, vline_kwargs: dict | None = None, tick_labels: List[str] | None = None):
     """
     - 将 x 轴刻度设为给定 sr 集合（去重后按降序）。
@@ -138,527 +77,250 @@ def _apply_sr_ticks_and_vlines(ax: plt.Axes, sr_values, vline_kwargs: dict | Non
     # 不改变 y 轴范围
     ax.set_ylim(y0, y1)
 
-# -----------------------------
-# 4) 绘图工具函数
-# -----------------------------
-def plot_accuracy_lines(df: pd.DataFrame, ylabel='Accuracy') -> None:
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for method, sub in df.groupby("Method"):
-        sub = sub.sort_values("sr", ascending=False)
-        ax.errorbar(
-            sub["sr"], sub["data"], yerr=sub["std"],
-            marker="o", linewidth=2.0, capsize=4,
-            label=legend_name.get(method, str(method)),
-            color=color_map[str(method)], zorder=3
-        )
+def compute_error_band(m, s, *,
+                       mode: str = "ci", level: float = 0.95, n: int | None = None
+                       ) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
+    mode = mode.lower()
+    m = np.asarray(m, dtype=float)
+    s = np.asarray(s, dtype=float)
+    
+    if mode == "none":
+        delta, low, high, note = 0, m, m, ""
+        return delta, low, high, note
+    
+    # --- SD 模式 ---
+    if mode == "sd":
+        low, high = m - s, m + s
+        return low, high, "±SD"
 
-    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=16)
-    ax.set_ylabel(f"{ylabel} (%)", fontsize=16)
+    # --- 需要 n ---
+    if n is None:
+        warnings.warn(f"[compute_error_band] n 未提供，{mode.upper()} 退化为 SD 阴影带（仅作展示）。")
+        return m - s, m + s, "±SD (fallback)"
+
+    n = np.asarray(n, dtype=float)
+    sem = s / np.sqrt(n)
+
+    # --- SEM 模式 ---
+    if mode == "sem":
+        low, high = m - sem, m + sem
+        return low, high, f"±SEM (n={np.mean(n):.0f})"
+
+    # --- CI 模式 ---
+    dof = np.maximum(1, n - 1)
+    # tcrit 支持广播（需逐点计算）
+    tcrit = st.t.ppf((1.0 + level) / 2.0, df=dof)
+    delta = tcrit * sem
+
+    low, high = m - delta, m + delta
+    note = f"Bands: ±{int(level*100)}% CI (n={np.mean(n):.0f})"
+    return delta, low, high, note
+
+def plot_lines_with_band(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", dv: str = "data", std: str = "std",
+    ylabel: str = "YLABEL", xlabel="XLABEL",
+    mode: str = "ci", level: float = 0.95, n: int | None = None, 
+    figsize=(10, 6), fontsize: int = 16, cmap=cm.get_cmap("viridis")
+    ) -> None: 
+    # plot
+    if cmap is None: cmap=cm.get_cmap("viridis")
+    fig, ax = plt.subplots(figsize=figsize)
+    for i, (method, values) in enumerate(df.groupby(identifier)):
+        values = values.sort_values(iv, ascending=False)
+        x = values[iv].to_numpy() # iv
+        m = values[dv].to_numpy() # dv, magnitude
+        s = values[std].to_numpy() # std
+        
+        # Error Calculation
+        _, low, high, band_note = compute_error_band(m, s, mode=mode, level=level, n=n)
+        
+        # Plot Lines + Error Bars
+        color_value = i/len(df.groupby(identifier))
+        ax.plot(x, m, marker="o", linewidth=2.0, label=method, zorder=3, color=cmap(color_value))
+        ax.fill_between(x, low, high, alpha=0.15, zorder=2, color=cmap(color_value))
+
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
     ax.invert_xaxis()
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
-    ax.legend(fontsize=12)
 
     # 只按 SR 标定刻度，并在刻度处加竖线
-    _apply_sr_ticks_and_vlines(ax, df["sr"])
-
-    fig.tight_layout()
-    plt.show()
-
-def plot_bar_by_sr(df: pd.DataFrame, ylabel='magnitude') -> None:
-    selection_rates = sorted(df["sr"].unique(), reverse=True)
-    methods = list(df["Method"].cat.categories)
-
-    fig, axes = plt.subplots(1, len(selection_rates), figsize=(20, 5), sharey=True)
-    if len(selection_rates) == 1:
-        axes = [axes]
-
-    for i, sr in enumerate(selection_rates):
-        ax = axes[i]
-        sub = df[df["sr"] == sr].set_index("Method").reindex(methods)
-        heights = sub["data"].to_numpy()
-        yerr = sub["std"].to_numpy()
-        colors = [color_map[m] for m in methods]
-
-        ax.bar(range(len(methods)), heights, yerr=yerr, capsize=4, color=colors)
-        ax.set_title(f"SR = {sr}", fontsize=16)
-        ax.set_xticks(range(len(methods)))
-        ax.set_xticklabels([legend_name.get(m, m) for m in methods],
-                           rotation=45, ha="right", fontsize=10)
-        if i == 0:
-            ax.set_ylabel(f"{ylabel} (%)", fontsize=14)
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
-
-    fig.tight_layout()
-    plt.show()
-
-def plot_std_lines(
-    df: pd.DataFrame, 
-    ylabel: str = 'Standard Deviation',
-    figsize=(10, 6),
-    fontsize: int = 16   # 统一字号控制
-) -> None:
-    fig, ax = plt.subplots(figsize=figsize)
-    for method, sub in df.groupby("Method"):
-        sub = sub.sort_values("sr", ascending=False)
-        ax.plot(
-            sub["sr"], sub["std"], marker="o", linewidth=2.0,
-            label=legend_name.get(method, str(method)),
-            color=color_map[str(method)], zorder=3
-        )
-
-    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=fontsize)
-    ax.set_ylabel(f"{ylabel} (%)", fontsize=fontsize)
-    ax.invert_xaxis()
-    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+    _apply_sr_ticks_and_vlines(ax, df[iv])
 
     ax.tick_params(axis="x", labelsize=fontsize*0.9)
     ax.tick_params(axis="y", labelsize=fontsize*0.9)
 
-    ax.legend(fontsize=fontsize*0.9, title_fontsize=fontsize)
-
-    # 只按 SR 标定刻度，并在刻度处加竖线
-    _apply_sr_ticks_and_vlines(ax, df["sr"])
-
-    fig.tight_layout()
-    plt.show()
-
-def plot_accuracy_with_band(
-    df: pd.DataFrame,
-    mode: str = "sem",     # "ci" | "sem" | "sd"
-    level: float = 0.95,   # 置信水平（用于 mode="ci"）
-    n: int | None = None,  # 每个(mean,std)对应的样本量
-    ylabel: str = 'Accuracy',
-    figsize=(10, 6),
-    fontsize: int = 16     # 统一字号控制
-) -> None:
-    """
-    以“曲线 + 半透明误差带”的方式展示 accuracy。
-    - mode="ci"  : 均值 ± t*z * (std/sqrt(n))，优先用 t 分布；无 scipy 时用正态近似。
-    - mode="sem" : 均值 ± (std/sqrt(n))。若 n=None，退化为 SD 带并提示。
-    - mode="sd"  : 均值 ± std（仅可视化，不建议用于论文正文）。
-    """
-    import math
-
-    # 尝试使用 t 分布；失败则退化为正态近似
-    z = None
-    t_ppf = None
-    if mode == "ci":
-        try:
-            import scipy.stats as st
-            t_ppf = lambda dof: st.t.ppf(0.5 + level/2, df=dof)
-        except Exception:
-            z = 1.96 if abs(level - 0.95) < 1e-6 else None
-            if z is None:
-                a = 0.147
-                p_one_side = 0.5 + level/2
-                s = 2*p_one_side - 1
-                ln = math.log(1 - s*s)
-                z = math.copysign(
-                    math.sqrt(math.sqrt((2/(math.pi*a) + ln/2)**2 - ln/a) - (2/(math.pi*a) + ln/2)),
-                    s
-                )
-
-    fig, ax = plt.subplots(figsize=figsize)
-    for method, sub in df.groupby("Method"):
-        sub = sub.sort_values("sr", ascending=False)
-        x = sub["sr"].to_numpy()
-        m = sub["data"].to_numpy()
-        s = sub["std"].to_numpy()
-
-        # 计算上下界
-        if mode == "sd":
-            low, high = m - s, m + s
-            band_note = "±SD"
-        elif mode == "sem":
-            if n is None:
-                print("[plot_accuracy_with_band] n 未提供，SEM 无法计算，退化为 SD 阴影带（仅作展示）。")
-                low, high = m - s, m + s
-                band_note = "±SD (fallback)"
-            else:
-                sem = s / np.sqrt(n)
-                low, high = m - sem, m + sem
-                band_note = f"±SEM (n={n})"
-        elif mode == "ci":
-            if n is None:
-                print("[plot_accuracy_with_band] n 未提供，CI 无法计算，退化为 SD 阴影带（仅作展示）。")
-                low, high = m - s, m + s
-                band_note = "±SD (fallback)"
-            else:
-                sem = s / np.sqrt(n)
-                if t_ppf is not None:
-                    tval = t_ppf(n - 1)
-                    delta = tval * sem
-                else:
-                    delta = z * sem  # 正态近似
-                low, high = m - delta, m + delta
-                band_note = f"±{int(level*100)}% CI (n={n})"
-        else:
-            raise ValueError("mode must be one of {'ci','sem','sd'}")
-
-        # 画线 + 阴影
-        ax.plot(x, m, marker="o", linewidth=2.0,
-                label=legend_name.get(method, str(method)),
-                color=color_map[str(method)], zorder=3)
-        ax.fill_between(x, low, high, alpha=0.15,
-                        color=color_map[str(method)], zorder=2)
-
-    ax.set_xlabel("Selection Rate (for extraction of subnetworks)", fontsize=fontsize)
-    ax.set_ylabel(f"{ylabel} (%)", fontsize=fontsize)
-    ax.invert_xaxis()
-    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
-
-    # 只按 SR 标定刻度，并在刻度处加竖线
-    _apply_sr_ticks_and_vlines(ax, df["sr"])
-
-    ax.tick_params(axis="x", labelsize=fontsize*0.9)
-    ax.tick_params(axis="y", labelsize=fontsize*0.9)
-
-    ax.legend(fontsize=fontsize*0.9, title="Bands: " + (band_note if 'band_note' in locals() else ""),
+    ax.legend(fontsize=fontsize*0.9, title=(band_note if 'band_note' in locals() else ""),
               title_fontsize=fontsize)
 
     fig.tight_layout()
     plt.show()
 
+def plot_bars(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", dv: str = "data", std: str = "std",
+    mode: str = "sem", level: float = 0.95, n: int | None = None, 
+    ylabel: str = "YLABEL", xlabel: str = "XLABEL",
+    figsize = (10,10), fontsize: int = 16, bar_width: float = 0.6, capsize: float = 5, 
+    color_bar: str = "auto", bar_colors = None, cmap=cm.get_cmap('viridis'),
+    annotate: bool = True, annotate_fmt: str = "{m:.2f} ± {e:.2f}",
+    xtick_rotation: float = 30, wrap_width: int | None = None
+    ) -> None:
+    # 若 df 含重复 Method，则聚合
+    df_preprocessed = df.groupby(identifier, sort=False).agg({dv: "mean", std: "mean"}).reset_index()
+    
+    # 提取方法与统计值
+    methods = df_preprocessed[identifier].astype(str).tolist()
+
+    # 自动换行
+    if wrap_width is not None:
+        methods_wrapped = [textwrap.fill(m, wrap_width) for m in methods]
+    else:
+        methods_wrapped = methods
+
+    means = df_preprocessed[dv].to_numpy()
+    stds = df_preprocessed[std].to_numpy()
+    
+    # Error Calculation
+    errs, _, _, err_note = compute_error_band(means, stds, mode=mode, level=level, n=n)
+
+    # 绘制
+    num_methods = len(methods)
+    x = np.arange(num_methods)
+    
+    if color_bar == "manual":
+        if bar_colors is None: 
+            bar_colors = ['skyblue'] * (num_methods-1) + ['orange']
+    elif color_bar == "auto":
+        bar_colors = []
+        if cmap is None: 
+            cmap=cm.get_cmap('viridis')
+        for i in range(num_methods):
+            color_value = i/num_methods
+            bar_colors.append(cmap(color_value))
+        
+    fig, ax = plt.subplots(figsize=figsize)
+    bars = ax.bar(x, means, width=bar_width,
+                  yerr=errs, capsize=capsize,
+                  color=bar_colors, edgecolor='black')
+    
+    # 注释数值
+    if annotate:
+        for xx, m, e in zip(x, means, errs):
+            ax.text(xx, m + e + 0.3, annotate_fmt.format(m=m, e=e),
+                    ha="center", va="bottom", fontsize=fontsize * 0.8)
+        
+    # 坐标轴
+    ax.set_xticks(x)
+    ax.set_xticklabels(methods_wrapped, fontsize=fontsize * 0.9,
+                       rotation=xtick_rotation, ha="right" if xtick_rotation != 0 else "center")
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+    ax.tick_params(axis="y", labelsize=fontsize * 0.9)
+
+    # 图例
+    ax.legend([bars], [f"Errors: {err_note}"], fontsize=fontsize * 0.8, title_fontsize=fontsize)
+
+    fig.tight_layout()
+    plt.show()
+
 # -----------------------------
-# 5) 主流程
-# -----------------------------
-def main_portion():
-    # -----------------------------
-    # accuracy; pcc
-    # -----------------------------
+def std_portion():
     from line_chart_data import portion_data_pcc
-    identifier_po = portion_data_pcc.identifier
-    portion_pcc_accuracy = portion_data_pcc.accuracy
-    portion_pcc_f1score = portion_data_pcc.f1score
+    portion_pcc_accuracy_dic = portion_data_pcc.accuracy
     
-    df = build_dataframe(portion_pcc_accuracy, identifier_po)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="sem", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # f1 score; pcc
-    df = build_dataframe(portion_pcc_f1score, identifier_po)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="sem", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    df = pd.DataFrame(portion_pcc_accuracy_dic)
     
-    # # -----------------------------
-    # # accuracy; plv
-    # # -----------------------------
-    # from line_chart_data import portion_data_plv
-    # identifier_po = portion_data_plv.identifier
-    # portion_plv_accuracy = portion_data_plv.accuracy
-    # portion_plv_f1score = portion_data_plv.f1score
+    plot_lines_with_band(df, dv='std', std='std', 
+                        mode="none", 
+                        ylabel="Std of Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cm.get_cmap('viridis'))
+    return df
+
+def accuracy_portion():
+    from line_chart_data import portion_data_pcc
+    portion_pcc_accuracy_dic = portion_data_pcc.accuracy
     
-    # df = build_dataframe(portion_plv_accuracy, identifier_po)
-
-    # print("Methods (short order):", list(df["Method"].cat.categories))
-    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    # print(df.head(10))
-
-    # # 图 1：误差带（把 n 改成你的真实重复次数）
-    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # # 图 2：Std 折线
-    # plot_std_lines(df)
-
-    # # f1 score; plv
-    # df = build_dataframe(portion_plv_f1score, identifier_po)
-
-    # print("Methods (short order):", list(df["Method"].cat.categories))
-    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    # print(df.head(10))
-
-    # # 图 1：误差带（把 n 改成你的真实重复次数）
-    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # # 图 2：Std 折线
-    # plot_std_lines(df)
-
-def main_summary():
-    # -----------------------------
-    # accuracy; pcc
-    # -----------------------------
-    df = build_dataframe(summary_pcc_accuracy, identifier_sm)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="sem", n=30, figsize=(11,6))
-
-    # 图 2：Std 折线
-    plot_std_lines(df, figsize=(11,6))
-
-    # f1 score; pcc
-    df = build_dataframe(summary_pcc_f1score, identifier_sm)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="sem", n=30, ylabel='F1 score', figsize=(11,6))
-
-    # 图 2：Std 折线
-    plot_std_lines(df, figsize=(11,6))
+    df = pd.DataFrame(portion_pcc_accuracy_dic)
     
-    # # -----------------------------
-    # # accuracy; plv
-    # # -----------------------------
-    # df = build_dataframe(summary_plv_accuracy, identifier_sm)
+    plot_lines_with_band(df, dv='data', std='std', 
+                        mode="ci", n=30, 
+                        ylabel="Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cm.get_cmap('viridis'))
+    return df
 
-    # print("Methods (short order):", list(df["Method"].cat.categories))
-    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    # print(df.head(10))
-
-    # # 图 1：误差带（把 n 改成你的真实重复次数）
-    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # # 图 2：Std 折线
-    # plot_std_lines(df)
-
-    # # f1 score; plv
-    # df = build_dataframe(summary_plv_f1score, identifier_sm)
-
-    # print("Methods (short order):", list(df["Method"].cat.categories))
-    # print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    # print(df.head(10))
-
-    # # 图 1：误差带（把 n 改成你的真实重复次数）
-    # plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # # 图 2：Std 折线
-    # plot_std_lines(df)
-
-def main_appendix():
-    # %% graph laplacian
-    from line_chart_data import appendix_data_pcc_gl
-    identifier_gl = appendix_data_pcc_gl.identifier
-    gl_pcc_accuracy = appendix_data_pcc_gl.accuracy
-    gl_pcc_f1score = appendix_data_pcc_gl.f1score
-
-    from line_chart_data import appendix_data_plv_gl
-    identifier_gl = appendix_data_plv_gl.identifier
-    gl_plv_accuracy = appendix_data_plv_gl.accuracy
-    gl_plv_f1score = appendix_data_plv_gl.f1score
-    # -----------------------------
-    # accuracy; pcc; gl
-    # -----------------------------
-    df = build_dataframe(gl_pcc_accuracy, identifier_gl)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # -----------------------------
-    # f1 score; pcc; gl
-    # -----------------------------
-    df = build_dataframe(gl_pcc_f1score, identifier_gl)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
+def sbpe_portion():
+    from line_chart_data import portion_data_pcc
+    portion_pcc_accuracy_dic = portion_data_pcc.accuracy
     
-    # -----------------------------
-    # accuracy; plv; gl
-    # -----------------------------
-    df = build_dataframe(gl_plv_accuracy, identifier_gl)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # -----------------------------
-    # f1 score; plv; gl
-    # -----------------------------
-    df = build_dataframe(gl_plv_f1score, identifier_gl)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    df = pd.DataFrame(portion_pcc_accuracy_dic)
     
-    # %% graph laplacian denoising
-    from line_chart_data import appendix_data_pcc_ld
-    identifier_ld = appendix_data_pcc_ld.identifier
-    ld_pcc_accuracy = appendix_data_pcc_ld.accuracy
-    ld_pcc_f1score = appendix_data_pcc_ld.f1score
-
-    from line_chart_data import appendix_data_plv_ld
-    identifier_ld = appendix_data_plv_ld.identifier
-    ld_plv_accuracy = appendix_data_plv_ld.accuracy
-    ld_plv_f1score = appendix_data_plv_ld.f1score
-    # -----------------------------
-    # accuracy; pcc; ld
-    # -----------------------------
-    df = build_dataframe(ld_pcc_accuracy, identifier_ld)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # -----------------------------
-    # f1 score; pcc; ld
-    # -----------------------------
-    df = build_dataframe(ld_pcc_f1score, identifier_ld)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    sbpes, sbpe_stds = [], []
+    for method, sub in df.groupby("identifier", sort=False):
+        sub = sub.sort_values("sr", ascending=False)
+        srs = sub["sr"].to_numpy()
+        accuracies = sub["data"].to_numpy()
+        stds = sub["std"].to_numpy()
+        
+        sbpes_ = balanced_performance_efficiency_single_points(srs, accuracies)
+        sbpe_stds_ = balanced_performance_efficiency_single_points(srs, stds)
+        
+        # print(srs)
+        # print(accuracies)
+        # print(f"Methods: {method}", f"SBPEs: {sbpes_}")
+        
+        sbpes.extend(sbpes_)
+        sbpe_stds.extend(sbpe_stds_)
+        
+    sbpes_dic = {"SBPEs": sbpes, "SBPE_stds": sbpe_stds}
+    df = pd.concat([df, pd.DataFrame(sbpes_dic)], axis=1)
     
-    # -----------------------------
-    # accuracy; plv; ld
-    # -----------------------------
-    df = build_dataframe(ld_plv_accuracy, identifier_ld)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # -----------------------------
-    # f1 score; plv; ld
-    # -----------------------------
-    df = build_dataframe(ld_plv_f1score, identifier_ld)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
+    plot_lines_with_band(df, dv='SBPEs', std='SBPE_stds', 
+                        mode="ci", n=30, 
+                        ylabel='BPE(Balanced Performance Efficiency) (%)', xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cm.get_cmap('viridis'))
     
-    # %% spectral graph filtering
-    from line_chart_data import appendix_data_pcc_sgf
-    identifier_sgf = appendix_data_pcc_sgf.identifier
-    sgf_pcc_accuracy = appendix_data_pcc_sgf.accuracy
-    sgf_pcc_f1score = appendix_data_pcc_sgf.f1score
+    return df
 
-    from line_chart_data import appendix_data_plv_sgf
-    identifier_sgf = appendix_data_plv_sgf.identifier
-    sgf_plv_accuracy = appendix_data_plv_sgf.accuracy
-    sgf_plv_f1score = appendix_data_plv_sgf.f1score
-    # -----------------------------
-    # accuracy; pcc; sgf
-    # -----------------------------
-    df = build_dataframe(sgf_pcc_accuracy, identifier_sgf)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # -----------------------------
-    # f1 score; pcc; ld
-    # -----------------------------
-    df = build_dataframe(sgf_pcc_f1score, identifier_sgf)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
+def mbpe_portion():
+    from line_chart_data import portion_data_pcc
+    portion_pcc_accuracy_dic = portion_data_pcc.accuracy
     
-    # -----------------------------
-    # accuracy; plv; ld
-    # -----------------------------
-    df = build_dataframe(sgf_plv_accuracy, identifier_sgf)
+    df = pd.DataFrame(portion_pcc_accuracy_dic)
+    
+    mbpe, mbpe_std = [], []
+    for method, sub in df.groupby("identifier", sort=False):
+        sub = sub.sort_values("sr", ascending=False)
+        srs = sub["sr"].to_numpy()
+        accuracies = sub["data"].to_numpy()
+        stds = sub["std"].to_numpy()
+        
+        mbpe_ = balanced_performance_efficiency_multiple_points(srs, accuracies)
+        mbpe_std_ = balanced_performance_efficiency_multiple_points(srs, stds)
+        
+        # print(srs)
+        # print(accuracies)
+        print(f"Methods: {method}", f"MBPE: {mbpe_}")
+        
+        mbpe_ = [mbpe_] * len(accuracies)
+        mbpe_std_ = [mbpe_std_] * len(accuracies)
+        
+        mbpe.extend(mbpe_)
+        mbpe_std.extend(mbpe_std_)
+    
+    mbpe_dic = {"MBPE": mbpe, "MBPE_std": mbpe_std}
+    df = pd.concat([df, pd.DataFrame(mbpe_dic)], axis=1)
 
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30)
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
-    # -----------------------------
-    # f1 score; plv; ld
-    # -----------------------------
-    df = build_dataframe(sgf_plv_f1score, identifier_sgf)
-
-    print("Methods (short order):", list(df["Method"].cat.categories))
-    print("SRs:", sorted(df["sr"].unique(), reverse=True))
-    print(df.head(10))
-
-    # 图 1：误差带（把 n 改成你的真实重复次数）
-    plot_accuracy_with_band(df, mode="ci", level=0.95, n=30, ylabel='F1 score')
-
-    # 图 2：Std 折线
-    plot_std_lines(df)
-
+    plot_bars(df, dv="MBPE", std="MBPE_std", 
+                       mode="ci", n=30, 
+                       color_bar="auto",
+                       ylabel="BPE(Balanced Performance Efficiency) (%)", xlabel="FN Recovery Methods",
+                       xtick_rotation=45, wrap_width=30, figsize=(10,15))
+    
+    return df
+    
 # %% main
 if __name__ == "__main__":
-    main_portion()
-    main_summary()
-    # main_appendix()
+    df_accuracy = accuracy_portion()
+    df_std = std_portion()
+    df_sbpe = sbpe_portion()
+    df_mbpe = mbpe_portion()
+    

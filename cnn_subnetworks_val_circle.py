@@ -594,7 +594,7 @@ def parameters_optimization():
 
 def normal_evaluation_framework():
     # feature
-    feature = 'plv'
+    feature = 'pcc'
     
     # optimized parameters
     sigma, lamda = 0.1, 0.01
@@ -637,234 +637,142 @@ def normal_evaluation_framework():
         
         #-----------------------------------------------------------------------
         # generalized_surface_laplacian_filtering; sigma = 0.01, 0.025, 0.05, ...; 'normalized': False
-        # optimized parameter: sigma = 0.05
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
-                                                                   'sigma': 0.01, 
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='generalized_surface_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
-                                                                   'sigma': 0.025, 
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='generalized_surface_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
-                                                                   'sigma': 0.05, 
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='generalized_surface_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
-                                                                   'sigma': 0.1, 
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='generalized_surface_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        #-----------------------------------------------------------------------
-        # # graph_laplacian_filtering; alpha = 1; sigma = 0.05, 0.1, 0.25, ...; highpass; 'normalized': False
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.05,
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.1,
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.25,
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.5,
-                                                                   'mode': 'highpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        #-----------------------------------------------------------------------
-        # # graph_laplacian_filtering; alpha = 1; sigma = 0.05, 0.1, 0.25, ...; lowpass; 'normalized': False
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.05,
-                                                                   'mode': 'lowpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.1,
-                                                                   'mode': 'lowpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.25,
-                                                                   'mode': 'lowpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-                                                 filtering_params={'computation': 'graph_laplacian_filtering',
-                                                                   'alpha': 1, 'sigma': 0.5,
-                                                                   'mode': 'lowpass',
-                                                                   'lateral_mode': 'bilateral',
-                                                                   'normalized': False, 'reinforce': False},
-                                                 selection_rate=selection_rate, feature_cm=feature,
-                                                 apply_filter='graph_laplacian_filtering',
-                                                 subject_range=range(6,16), experiment_range=range(1,4),
-                                                 subnetworks_extract='read',
-                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-                                                 save=True)
-        
-        #-----------------------------------------------------------------------
-        # # truncate_graph_spectral_filtering; highpass; cutoff = 0.1, 0.2, 0.3, 0.4; 'normalized': False
+        # optimized parameter: sigma = 0.025
         # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'truncated_graph_spectral_filtering', 
-        #                                                            'cutoff': 0.5, 'mode': 'highpass', 
+        #                                          filtering_params={'computation': 'generalized_surface_laplacian_filtering', 
+        #                                                            'sigma': 0.01, 
         #                                                            'normalized': False, 'reinforce': False},
-        #                                          selection_rate=selection_rate, feature_cm='pcc',
-        #                                          apply_filter='truncated_graph_spectral_filtering',
-        #                                          subject_range=range(6,16), experiment_range=range(1,4),
-        #                                          subnetworks_extract='read',
-        #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-        #                                          save=True)
-        
-        # # truncate_graph_spectral_filtering; lowpass; cutoff = 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7; 'normalized': False
-        # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'truncated_graph_spectral_filtering', 
-        #                                                            'cutoff': 0.5, 'mode': 'lowpass', 
-        #                                                            'normalized': False, 'reinforce': False},
-        #                                          selection_rate=selection_rate, feature_cm='pcc',
-        #                                          apply_filter='truncated_graph_spectral_filtering',
+        #                                          selection_rate=selection_rate, feature_cm=feature,
+        #                                          apply_filter='generalized_surface_laplacian_filtering',
         #                                          subject_range=range(6,16), experiment_range=range(1,4),
         #                                          subnetworks_extract='read',
         #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
         #                                          save=True)
         
         #-----------------------------------------------------------------------
-        # # exp_graph_spectral_filtering; highpass; t = 0.1, 0.25, 0.5, 1, 2, 5, 10, 20; 'normalized': True
+        # # graph_laplacian_filtering; highpass; alpha = 1; sigma = 0.05, 0.1, 0.25, ...; 'normalized': False
+        # optimized parameter: sigma = 0.1
         # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'exp_graph_spectral_filtering', 
-        #                                                            't': 0.5, 'mode': 'highpass',
-        #                                                            'normalized': True, 'reinforce': False},
-        #                                          selection_rate=selection_rate, feature_cm='pcc',
-        #                                          apply_filter='exp_graph_spectral_filtering',
-        #                                          subject_range=range(6,16), experiment_range=range(1,4),
-        #                                          subnetworks_extract='read', 
-        #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-        #                                          save=True)
-        
-        # # exp_graph_spectral_filtering; lowpass; t = 0.1, 0.25, 0.5, 1, 2, 5, 10, 20; 'normalized': True
-        # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'exp_graph_spectral_filtering', 
-        #                                                            't': 0.5, 'mode': 'lowpass',
-        #                                                            'normalized': True, 'reinforce': False},
-        #                                          selection_rate=selection_rate, feature_cm='pcc',
-        #                                          apply_filter='exp_graph_spectral_filtering',
-        #                                          subject_range=range(6,16), experiment_range=range(1,4),
-        #                                          subnetworks_extract='read', 
-        #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
-        #                                          save=True)
-        
-        # # exp_graph_spectral_filtering; lowpass; t = 1; 'normalized': False       
-        # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'exp_graph_spectral_filtering', 
-        #                                                            'sigma': 0.1,
-        #                                                            't': 1, 'mode': 'highpass',
+        #                                          filtering_params={'computation': 'graph_laplacian_filtering',
+        #                                                            'alpha': 1, 'sigma': 0.05,
+        #                                                            'mode': 'highpass',
+        #                                                            'lateral_mode': 'bilateral',
         #                                                            'normalized': False, 'reinforce': False},
-        #                                          selection_rate=selection_rate, feature_cm='pcc',
-        #                                          apply_filter='exp_graph_spectral_filtering',
+        #                                          selection_rate=selection_rate, feature_cm=feature,
+        #                                          apply_filter='graph_laplacian_filtering',
         #                                          subject_range=range(6,16), experiment_range=range(1,4),
-        #                                          subnetworks_extract='read', 
+        #                                          subnetworks_extract='read',
         #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
         #                                          save=True)
         
-        # # exp_graph_spectral_filtering; highpass; t = 1; 'normalized': False       
+        #-----------------------------------------------------------------------
+        # # graph_laplacian_filtering; lowpass; alpha = 1; sigma = 0.05, 0.1, 0.25, ...; 'normalized': False
+        # optimized parameter: sigma = 0.1
         # cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
-        #                                          filtering_params={'computation': 'exp_graph_spectral_filtering', 
-        #                                                            'sigma': 0.01,
-        #                                                            't': 1, 'mode': 'lowpass',
+        #                                          filtering_params={'computation': 'graph_laplacian_filtering',
+        #                                                            'alpha': 1, 'sigma': 0.05,
+        #                                                            'mode': 'lowpass',
+        #                                                            'lateral_mode': 'bilateral',
         #                                                            'normalized': False, 'reinforce': False},
-        #                                          selection_rate=selection_rate, feature_cm='pcc',
-        #                                          apply_filter='exp_graph_spectral_filtering',
+        #                                          selection_rate=selection_rate, feature_cm=feature,
+        #                                          apply_filter='graph_laplacian_filtering',
         #                                          subject_range=range(6,16), experiment_range=range(1,4),
-        #                                          subnetworks_extract='read', 
+        #                                          subnetworks_extract='read',
         #                                          subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
         #                                          save=True)
+        
+        #-----------------------------------------------------------------------
+        # exp_graph_spectral_filtering; highpass; t = 1; sigma = 0 .05, 0.1, 0.25, 0.5 'normalized': False
+        # optimized parameter: sigma = 0.1
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.05, 'mode': 'highpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.1, 'mode': 'highpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.25, 'mode': 'highpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.5, 'mode': 'highpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        # exp_graph_spectral_filtering; lowpass; t = 1; sigma = 0 .05, 0.1, 0.25, 0.5 'normalized': False
+        # optimized parameter: sigma = 0.01
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.05, 'mode': 'lowpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.1, 'mode': 'lowpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.25, 'mode': 'lowpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
+        
+        cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto", "type": "3d_spherical"},
+                                                 filtering_params={'computation': 'exp_graph_spectral_filtering', 
+                                                                   't': 1, 'sigma': 0.5, 'mode': 'lowpass',
+                                                                   'normalized': False},
+                                                 selection_rate=selection_rate, feature_cm=feature,
+                                                 apply_filter='exp_graph_spectral_filtering',
+                                                 subject_range=range(6,16), experiment_range=range(1,4),
+                                                 subnetworks_extract='read', 
+                                                 subnets_exrtact_basis_sub=range(1,6), subnets_exrtact_basis_ex=range(1,4),
+                                                 save=True)
         
 if __name__ == '__main__':
     # read, cal = global_average_consistency_check(apply_filter='diffusion_inverse',
