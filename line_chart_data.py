@@ -6,22 +6,74 @@ Created on Mon Aug 18 22:09:37 2025
 """
 
 class data:
-    def __init__(self, identifier, accuracy, f1score):
-        self.identifier = identifier
+    def __init__(self, name, accuracy, f1score):
+        self.name = name
         self.accuracy = accuracy
         self.f1score = f1score
 
-# %% portion_data_pcc
-identifier_po = [
-    "Baseline: Observed FN",
-    "Proposing: Diffusion Inversion (σ=0.1 λ=0.01)",
-    
-    "Competition 1: Generalized Surface Laplacian Filtering (σ=0.025)",
-    "Competition 2: Graph Laplacian Filtering (highpass σ=0.1)",
-    "Competition 3: Graph Spectral Filtering (highpass σ=0.1)",
-]
+# %% data of pcc, plv & pli
+selected_accuracy = {
+    "identifier": (
+        ["Observed FN (PLI)"] * 7
+        + ["Observed FN (PCC)"] * 7
+        + ["Diffusion Inversion (PCC, σ=0.1 λ=0.01)"] * 7
+        + ["Observed FN (PLV)"] * 7
+        + ["Diffusion Inversion (PLV, σ=0.1 λ=0.01)"] * 7
+    ),
+    "data": [
+        87.53687316, 87.45132743, 88.28023599, 87.92035398, 87.60181028, 74.12961761, 47.04744274,
+        
+        93.10136478, 91.32666373, 89.72256104, 83.85720465, 76.24294905, 60.40277742, 47.7409003,
+        92.91743297, 92.70895942, 92.77287866, 91.85156158, 90.250031, 82.0953901, 69.85617234,
+        
+        93.27335877, 91.61558779, 90.62053305, 86.59751382, 78.22435027, 60.85499298, 48.74393377,
+        92.07767945, 91.98721731, 91.79450514, 90.75722108, 88.69819808, 77.34553067, 62.77657823,
+    ],
+    "sr": [1, 0.75, 0.5, 0.3, 0.2, 0.1, 0.05] * 5,
+    "std": [
+        2.431326941, 2.223761008, 2.359515089, 2.146332766, 2.008740281, 4.053283063, 4.308193631,
+        
+        3.464927044, 4.461179762, 4.771206525, 5.39656891, 7.932375726, 9.990041349, 9.756530994,
+        3.583740795, 3.538021571, 3.388490783, 3.991818468, 4.082967521, 5.830988637, 5.902425513,
+        
+        3.467246946, 4.106637386, 4.443344283, 4.857266169, 6.733406501, 9.305591214, 9.18532078,
+        4.040197392, 4.167752808 ,4.095374619, 4.019831125, 4.623849449, 6.431890867, 7.526281714,
+    ]
+}
 
-portion_pcc_accuracy = {
+selected_f1score = {
+    "identifier": (
+        ["Observed FN (PLI)"] * 7
+        + ["Observed FN (PCC)"] * 7
+        + ["Diffusion Inversion (PCC, σ=0.1 λ=0.01)"] * 7
+        + ["Observed FN (PLV)"] * 7
+        + ["Diffusion Inversion (PLV, σ=0.1 λ=0.01)"] * 7
+    ),
+    "data": [
+        87.02164983, 87.0210004, 88.00346109, 87.7185682, 87.31553271, 73.78563455, 45.45593134,
+        
+        92.56711177, 90.83585861, 89.21750534, 83.23724596, 75.38043084, 58.99436719, 43.62253564,
+        92.33856677, 92.22816257, 92.19353, 91.28978191, 89.68940373, 81.45333223, 68.10824019,
+        
+        92.86695022, 91.24269076, 90.13705323, 86.08015293, 77.41021726, 59.67619476, 46.39549042,
+        91.60416756, 91.6774704, 91.3269394, 90.39289121, 88.27756025, 76.84796921, 60.92217364,
+    ],
+    "sr": [1, 0.75, 0.5, 0.3, 0.2, 0.1, 0.05] * 5,
+    "std": [
+        2.677084484, 2.449679158, 2.41097382, 2.232007096, 2.119719469, 4.164155385, 4.831405732,
+        
+        3.880936216, 4.816474683, 5.225060839, 5.667572109, 8.326328348, 10.49020927, 11.06043735,
+        4.048308663, 3.902089044, 3.792384241, 4.424263237, 4.271581312, 6.173885824, 6.393183958,
+        
+        3.831964302, 4.360324671, 4.798773519, 5.126296537, 7.0872588, 9.745773658, 10.02157886,
+        4.440107005, 4.38591466, 4.456073608, 4.209411294, 4.886999681, 6.656285904, 8.002425888,
+    ]
+}
+
+selected_data = data("selected_data", selected_accuracy, selected_f1score)
+
+# %% partia_data_pcc
+partia_accuracy_pcc = {
     "identifier": (
         ["Baseline: Observed FN"] * 7
         + ["Generalized Surface Laplacian Filtering (σ=0.025)"] * 7
@@ -50,7 +102,14 @@ portion_pcc_accuracy = {
     ]
 }
 
-portion_pcc_f1score = {
+partia_f1score_pcc = {
+    "identifier": (
+        ["Baseline: Observed FN"] * 7
+        + ["Generalized Surface Laplacian Filtering (σ=0.025)"] * 7
+        + ["Graph Laplacian Filtering (highpass σ=0.1)"] * 7
+        + ["Graph Spectral Filtering (highpass σ=0.1)"] * 7
+        + ["Proposing: Diffusion Inversion (σ=0.1 λ=0.01)"] * 7
+    ),
     "data": [
         92.56711177, 90.83585861, 89.21750534, 83.23724596, 75.38043084, 58.99436719, 43.62253564,
         
@@ -72,7 +131,7 @@ portion_pcc_f1score = {
     ]
 }
 
-portion_data_pcc = data(identifier_po, portion_pcc_accuracy, portion_pcc_f1score)
+partia_data_pcc = data("partia_data_pcc", partia_accuracy_pcc, partia_f1score_pcc)
 
 # %% portion_data_plv
 portion_plv_accuracy = {
@@ -99,23 +158,19 @@ portion_plv_f1score = {
     ]
 }
 
-portion_data_plv = data(identifier_po, portion_plv_accuracy, portion_plv_f1score)
+portion_data_plv = data("partia_data_plv", portion_plv_accuracy, portion_plv_f1score)
 
 # %% summary_data_pcc
-identifier_sm = [
-    "Baseline: Observed FN",
-    "Proposing: Diffusion Inversion (sigma=0.1 lambda=0.01)",
-    
-    "Competition 1: Generalized Surface Laplacian Filtering (sigma=0.025)",
-    
-    "Competition 2: Graph Laplacian Filtering (highpass sigma=0.1)",
-    "Competition 3: Graph Laplacian Filtering (lowpass sigma=0.1)",
-    
-    "Competition 4: Graph Spectral Filtering (highpass sigma=0.1)",
-    "Competition 5: Graph Spectral Filtering (lowpass sigma=0.01)",
-]
-
 summary_pcc_accuracy = {
+    "identifier": (
+        ["Baseline: Observed FN"] * 7
+        + ["Generalized Surface Laplacian Filtering (σ=0.025)"] * 7
+        + ["Graph Laplacian Filtering (highpass σ=0.1)"] * 7
+        + ["Graph Laplacian Filtering (lowpass σ=0.1)"] * 7
+        + ["Graph Spectral Filtering (highpass σ=0.1)"] * 7
+        + ["Graph Spectral Filtering (lowpass σ=0.1)"] * 7
+        + ["Proposing: Diffusion Inversion (σ=0.1 λ=0.01)"] * 7
+    ),
     "data": [
         93.10136478, 91.32666373, 89.72256104, 83.85720465, 76.24294905, 60.40277742, 47.7409003,
         92.91743297, 92.70895942, 92.77287866, 91.85156158, 90.250031, 82.0953901, 69.85617234,
@@ -124,7 +179,7 @@ summary_pcc_accuracy = {
         
         92.49269457, 92.36977252, 92.64570916, 91.99651093, 90.1636058, 79.39173638, 61.06070987,
         91.09667039, 91.46159281, 90.88008835, 90.73554846, 89.14223306, 78.28085306, 59.13772034,
-
+        
         92.99017869, 92.76305735, 92.08657514, 89.68309126, 87.08945002, 73.43777484, 60.56217326,
         93.01581329, 91.55604576, 89.67219151, 84.23354008, 75.6307667, 58.99205587, 47.50004181,
     ],
@@ -144,6 +199,15 @@ summary_pcc_accuracy = {
 }
 
 summary_pcc_f1score = {
+    "identifier": (
+        ["Baseline: Observed FN"] * 7
+        + ["Generalized Surface Laplacian Filtering (σ=0.025)"] * 7
+        + ["Graph Laplacian Filtering (highpass σ=0.1)"] * 7
+        + ["Graph Laplacian Filtering (lowpass σ=0.1)"] * 7
+        + ["Graph Spectral Filtering (highpass σ=0.1)"] * 7
+        + ["Graph Spectral Filtering (lowpass σ=0.1)"] * 7
+        + ["Proposing: Diffusion Inversion (σ=0.1 λ=0.01)"] * 7
+    ),
     "data": [
         92.56711177, 90.83585861, 89.21750534, 83.23724596, 75.38043084, 58.99436719, 43.62253564,
         92.33856677, 92.22816257, 92.19353,    91.28978191, 89.68940373, 81.45333223, 68.10824019,
@@ -171,7 +235,7 @@ summary_pcc_f1score = {
     ]
 }
 
-summary_data_pcc = data(identifier_sm, summary_pcc_accuracy, summary_pcc_f1score)
+summary_data_pcc = data("full_data_pcc", summary_pcc_accuracy, summary_pcc_f1score)
 
 # %% summary_data_plv
 summary_plv_accuracy = {
@@ -210,7 +274,7 @@ summary_plv_f1score = {
     ]
 }
 
-summary_data_plv = data(identifier_sm, summary_plv_accuracy, summary_plv_f1score)
+summary_data_plv = data("full_data_plv", summary_plv_accuracy, summary_plv_f1score)
 
 # %% separator
 
