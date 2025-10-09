@@ -213,7 +213,7 @@ def plot_bars(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", 
         if cmap is None: 
             cmap=cm.get_cmap('viridis')
         for i in range(num_methods):
-            color_value = i/num_methods
+            color_value = i / max((num_methods - 1), 1)
             bar_colors.append(cmap(color_value))
         
     fig, ax = plt.subplots(figsize=figsize)
@@ -244,6 +244,10 @@ def plot_bars(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", 
 
 # -----------------------------
 def accuracy_partia():
+    # color map
+    cmap = plt.colormaps['tab20_r']
+    
+    # data
     from line_chart_data import partia_data_pcc
     
     # accuracy
@@ -252,13 +256,13 @@ def accuracy_partia():
     
     plot_lines_with_band(df_accuracy, dv='data', std='std', 
                         mode="ci", n=30, 
-                        ylabel="Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
-                        cmap=plt.colormaps['tab20_r'], use_alt_linestyles=True)
+                        ylabel="Averaged Accuracy (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        cmap=cmap, use_alt_linestyles=True)
     
     plot_lines_with_band(df_accuracy, dv='std', std='std', 
                         mode="none", 
-                        ylabel="Std of Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
-                        cmap=plt.colormaps['viridis'], use_alt_linestyles=True)
+                        ylabel="Std of Averaged Accuracy (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        cmap=cmap, use_alt_linestyles=True)
     
     # f1 score
     f1score_pcc_dic = partia_data_pcc.f1score
@@ -266,17 +270,21 @@ def accuracy_partia():
     
     plot_lines_with_band(df_f1score, dv='data', std='std', 
                         mode="ci", n=30, 
-                        ylabel="Averaged F1 Score (%)", xlabel="Selection Rate (for extraction of subnetworks)",
-                        cmap=plt.colormaps['viridis'])
+                        ylabel="Averaged F1 Score (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        cmap=cmap, use_alt_linestyles=True)
     
     plot_lines_with_band(df_f1score, dv='std', std='std', 
                         mode="none", 
-                        ylabel="Std of Averaged F1 Score (%)", xlabel="Selection Rate (for extraction of subnetworks)",
-                        cmap=plt.colormaps['viridis'])
+                        ylabel="Std of Averaged F1 Score (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        cmap=cmap, use_alt_linestyles=True)
     
     return df_accuracy, df_f1score
 
 def sbpe_partia():
+    # color map
+    cmap = plt.colormaps['tab20_r']
+    
+    # data
     from line_chart_data import partia_data_pcc
     accuracy_pcc_dic = partia_data_pcc.accuracy
     
@@ -304,12 +312,16 @@ def sbpe_partia():
     
     plot_lines_with_band(df, dv='SBPEs', std='SBPE_stds', 
                         mode="ci", n=30, 
-                        ylabel='BPE(Balanced Performance Efficiency) (%)', xlabel="Selection Rate (for extraction of subnetworks)",
-                        cmap=plt.colormaps['viridis'])
+                        ylabel='BPE(Balanced Performance Efficiency) (%)', xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        cmap=cmap, use_alt_linestyles=True)
     
     return df
 
 def mbpe_partia():
+    # color map
+    cmap = plt.colormaps['tab20_r']
+    
+    # data
     from line_chart_data import partia_data_pcc
     accuracy_pcc_dic = partia_data_pcc.accuracy
     
@@ -340,7 +352,7 @@ def mbpe_partia():
 
     plot_bars(df, dv="MBPE", std="MBPE_std", 
                        mode="ci", n=30, 
-                       color_bar="auto",
+                       color_bar="auto", cmap=cmap,
                        ylabel="BPE(Balanced Performance Efficiency) (%)", xlabel="FN Recovery Methods",
                        xtick_rotation=45, wrap_width=30, figsize=(10,15))
     
@@ -396,8 +408,7 @@ def accuracy_selected():
 # %% main
 if __name__ == "__main__":
     accuracy, f1score = accuracy_partia()
-    # accuracy_, f1score_ = std_partia()
-    # df_sbpe = sbpe_partia()
-    # df_mbpe = mbpe_partia()
+    df_sbpe = sbpe_partia()
+    df_mbpe = mbpe_partia()
     
-    accuracy_selected()
+    # accuracy_selected()
