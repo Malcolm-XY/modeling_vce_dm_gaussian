@@ -116,7 +116,7 @@ def compute_error_band(m, s, *,
     note = f"Bands: ±{int(level*100)}% CI (n={np.mean(n):.0f})"
     return delta, low, high, note
 
-def plot_lines_with_band(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", dv: str = "data", std: str = "std",
+def plot_lines_with_band(df: pd.DataFrame, identifier: str = "identifier", iv: str = "srs", dv: str = "data", std: str = "stds",
     ylabel: str = "YLABEL", xlabel="XLABEL",
     mode: str = "ci", level: float = 0.95, n: int | None = None, 
     figsize=(10, 6), fontsize: int = 16, cmap=plt.colormaps['viridis'],
@@ -175,7 +175,7 @@ def plot_lines_with_band(df: pd.DataFrame, identifier: str = "identifier", iv: s
     fig.tight_layout()
     plt.show()
 
-def plot_bars(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", dv: str = "data", std: str = "std",
+def plot_bars(df: pd.DataFrame, identifier: str = "identifier", iv: str = "srs", dv: str = "data", std: str = "stds",
     mode: str = "sem", level: float = 0.95, n: int | None = None, 
     ylabel: str = "YLABEL", xlabel: str = "XLABEL",
     figsize = (10,10), fontsize: int = 16, bar_width: float = 0.6, capsize: float = 5, 
@@ -243,59 +243,65 @@ def plot_bars(df: pd.DataFrame, identifier: str = "identifier", iv: str = "sr", 
     plt.show()
 
 # -----------------------------
-def accuracy_partia():
+def accuracy_partia(feature='pcc'):
     # color map
     cmap = plt.colormaps['tab20_r']
     
-    # data
-    from line_chart_data import partia_data_pcc
+    # import data
+    if feature == 'pcc':
+        from line_chart_data import partia_data_pcc as partia_data
+    elif feature == 'plv':
+        from line_chart_data import partia_data_plv as partia_data
     
     # accuracy
-    accuracy_pcc_dic = partia_data_pcc.accuracy
-    df_accuracy = pd.DataFrame(accuracy_pcc_dic)
+    accuracy_dic = partia_data.accuracy
+    df_accuracy = pd.DataFrame(accuracy_dic)
     
-    plot_lines_with_band(df_accuracy, dv='data', std='std', 
+    plot_lines_with_band(df_accuracy, dv='data', std='stds', 
                         mode="ci", n=30, 
                         ylabel="Averaged Accuracy (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
                         cmap=cmap, use_alt_linestyles=True)
     
-    plot_lines_with_band(df_accuracy, dv='std', std='std', 
+    plot_lines_with_band(df_accuracy, dv='stds', std='stds', 
                         mode="none", 
-                        ylabel="Std of Averaged Accuracy (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        ylabel="Std of Accuracy (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
                         cmap=cmap, use_alt_linestyles=True)
     
     # f1 score
-    f1score_pcc_dic = partia_data_pcc.f1score
-    df_f1score = pd.DataFrame(f1score_pcc_dic)
+    f1score_dic = partia_data.f1score
+    df_f1score = pd.DataFrame(f1score_dic)
     
-    plot_lines_with_band(df_f1score, dv='data', std='std', 
+    plot_lines_with_band(df_f1score, dv='data', std='stds', 
                         mode="ci", n=30, 
                         ylabel="Averaged F1 Score (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
                         cmap=cmap, use_alt_linestyles=True)
     
-    plot_lines_with_band(df_f1score, dv='std', std='std', 
+    plot_lines_with_band(df_f1score, dv='stds', std='stds', 
                         mode="none", 
-                        ylabel="Std of Averaged F1 Score (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
+                        ylabel="Std of F1 Score (%)", xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
                         cmap=cmap, use_alt_linestyles=True)
     
     return df_accuracy, df_f1score
 
-def sbpe_partia():
+def sbpe_partia(feature='pcc'):
     # color map
     cmap = plt.colormaps['tab20_r']
     
-    # data
-    from line_chart_data import partia_data_pcc
-    accuracy_pcc_dic = partia_data_pcc.accuracy
+    # import data
+    if feature == 'pcc':
+        from line_chart_data import partia_data_pcc as partia_data
+    elif feature == 'plv':
+        from line_chart_data import partia_data_plv as partia_data
     
-    df = pd.DataFrame(accuracy_pcc_dic)
+    accuracy_dic = partia_data.accuracy
+    df_accuracy = pd.DataFrame(accuracy_dic)
     
     sbpes, sbpe_stds = [], []
-    for method, sub in df.groupby("identifier", sort=False):
-        sub = sub.sort_values("sr", ascending=False)
-        srs = sub["sr"].to_numpy()
+    for method, sub in df_accuracy.groupby("identifier", sort=False):
+        sub = sub.sort_values("srs", ascending=False)
+        srs = sub["srs"].to_numpy()
         accuracies = sub["data"].to_numpy()
-        stds = sub["std"].to_numpy()
+        stds = sub["stds"].to_numpy()
         
         sbpes_ = balanced_performance_efficiency_single_points(srs, accuracies)
         sbpe_stds_ = balanced_performance_efficiency_single_points(srs, stds)
@@ -308,31 +314,34 @@ def sbpe_partia():
         sbpe_stds.extend(sbpe_stds_)
         
     sbpes_dic = {"SBPEs": sbpes, "SBPE_stds": sbpe_stds}
-    df = pd.concat([df, pd.DataFrame(sbpes_dic)], axis=1)
+    df_augmented = pd.concat([df_accuracy, pd.DataFrame(sbpes_dic)], axis=1)
     
-    plot_lines_with_band(df, dv='SBPEs', std='SBPE_stds', 
+    plot_lines_with_band(df_augmented, dv='SBPEs', std='SBPE_stds', 
                         mode="ci", n=30, 
                         ylabel='BPE(Balanced Performance Efficiency) (%)', xlabel="Selection Rate of Nodes (for extraction of subnetworks)",
                         cmap=cmap, use_alt_linestyles=True)
     
-    return df
+    return df_augmented
 
-def mbpe_partia():
+def mbpe_partia(feature='pcc'):
     # color map
     cmap = plt.colormaps['tab20_r']
     
-    # data
-    from line_chart_data import partia_data_pcc
-    accuracy_pcc_dic = partia_data_pcc.accuracy
+    # import data
+    if feature == 'pcc':
+        from line_chart_data import partia_data_pcc as partia_data
+    elif feature == 'plv':
+        from line_chart_data import partia_data_plv as partia_data
     
-    df = pd.DataFrame(accuracy_pcc_dic)
+    accuracy_dic = partia_data.accuracy
+    df_accuracy = pd.DataFrame(accuracy_dic)
     
     mbpe, mbpe_std = [], []
-    for method, sub in df.groupby("identifier", sort=False):
-        sub = sub.sort_values("sr", ascending=False)
-        srs = sub["sr"].to_numpy()
+    for method, sub in df_accuracy.groupby("identifier", sort=False):
+        sub = sub.sort_values("srs", ascending=False)
+        srs = sub["srs"].to_numpy()
         accuracies = sub["data"].to_numpy()
-        stds = sub["std"].to_numpy()
+        stds = sub["stds"].to_numpy()
         
         mbpe_ = balanced_performance_efficiency_multiple_points(srs, accuracies)
         mbpe_std_ = balanced_performance_efficiency_multiple_points(srs, stds)
@@ -347,16 +356,16 @@ def mbpe_partia():
         mbpe.extend(mbpe_)
         mbpe_std.extend(mbpe_std_)
     
-    mbpe_dic = {"MBPE": mbpe, "MBPE_std": mbpe_std}
-    df = pd.concat([df, pd.DataFrame(mbpe_dic)], axis=1)
+    mbpe_dic = {"MBPEs": mbpe, "MBPE_stds": mbpe_std}
+    df_augmented = pd.concat([df_accuracy, pd.DataFrame(mbpe_dic)], axis=1)
 
-    plot_bars(df, dv="MBPE", std="MBPE_std", 
-                       mode="ci", n=30, 
-                       color_bar="auto", cmap=cmap,
-                       ylabel="BPE(Balanced Performance Efficiency) (%)", xlabel="FN Recovery Methods",
-                       xtick_rotation=45, wrap_width=30, figsize=(10,15))
+    plot_bars(df_augmented, dv="MBPEs", std="MBPE_stds", 
+              mode="ci", n=30, 
+              color_bar="auto", cmap=cmap,
+              ylabel="BPE(Balanced Performance Efficiency) (%)", xlabel="FN Recovery Methods",
+              xtick_rotation=45, wrap_width=30, figsize=(10,15))
     
-    return df
+    return df_augmented
     
 # -----------------------------
 def accuracy_selected():
@@ -379,12 +388,12 @@ def accuracy_selected():
     accuracy_dic = selected_data.accuracy
     df_accuracy = pd.DataFrame(accuracy_dic)
     
-    plot_lines_with_band(df_accuracy, dv='data', std='std', 
+    plot_lines_with_band(df_accuracy, dv='data', std='stds', 
                         mode="ci", n=30, 
                         ylabel="Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
                         cmap=cmap, linestyles=linestyles)
     
-    plot_lines_with_band(df_accuracy, dv='std', std='std', 
+    plot_lines_with_band(df_accuracy, dv='stds', std='stds', 
                         mode="none", n=1, 
                         ylabel="Std of Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
                         cmap=cmap, linestyles=linestyles)
@@ -393,22 +402,75 @@ def accuracy_selected():
     f1score_dic = selected_data.f1score
     df_f1score = pd.DataFrame(f1score_dic)
     
-    plot_lines_with_band(df_f1score, dv='data', std='std', 
+    plot_lines_with_band(df_f1score, dv='data', std='stds', 
                         mode="ci", n=30, 
                         ylabel="Averaged F1 Score (%)", xlabel="Selection Rate (for extraction of subnetworks)",
                         cmap=cmap, linestyles=linestyles)
     
-    plot_lines_with_band(df_f1score, dv='std', std='std', 
+    plot_lines_with_band(df_f1score, dv='stds', std='stds', 
                         mode="none", n=1, 
                         ylabel="Std of Averaged F1 Score (%)", xlabel="Selection Rate (for extraction of subnetworks)",
                         cmap=cmap, linestyles=linestyles)
     
     return df_accuracy, df_f1score
 
+def accuracy_appendix():
+    # color bars; plot settings
+    from matplotlib.colors import ListedColormap
+    
+    cmap = ListedColormap([
+        "lightsteelblue", "blue",
+        "limegreen", "salmon",
+        "lightsteelblue", "blue",
+        "limegreen", "salmon",
+    ])
+    
+    linestyles = ['-', '-', '-', '-', '--', '--', '--', '--']
+    # end
+    
+    # data
+    from line_chart_data import glf_pcc as data
+    
+    # accuracy
+    accuracy_dic = data.accuracy
+    df_accuracy = pd.DataFrame(accuracy_dic)
+    
+    plot_lines_with_band(df_accuracy, dv='data', std='stds', 
+                        mode="ci", n=30, 
+                        ylabel="Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cmap, linestyles=linestyles)
+    
+    plot_lines_with_band(df_accuracy, dv='stds', std='stds', 
+                        mode="none", n=1, 
+                        ylabel="Std of Averaged Accuracy (%)", xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cmap, linestyles=linestyles)
+    
+    # f1 score
+    f1score_dic = data.f1score
+    df_f1score = pd.DataFrame(f1score_dic)
+    
+    plot_lines_with_band(df_f1score, dv='data', std='stds', 
+                        mode="ci", n=30, 
+                        ylabel="Averaged F1 Score (%)", xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cmap, linestyles=linestyles)
+    
+    plot_lines_with_band(df_f1score, dv='stds', std='stds', 
+                        mode="none", n=1, 
+                        ylabel="Std of Averaged F1 Score (%)", xlabel="Selection Rate (for extraction of subnetworks)",
+                        cmap=cmap, linestyles=linestyles)
+    
+    return df_accuracy, df_f1score
+        
 # %% main
 if __name__ == "__main__":
-    accuracy, f1score = accuracy_partia()
-    df_sbpe = sbpe_partia()
-    df_mbpe = mbpe_partia()
+    # accuracy_pcc, f1score_pcc = accuracy_partia('pcc')
+    # df_sbpe = sbpe_partia('pcc')
+    # df_mbpe = mbpe_partia('pcc')
     
-    # accuracy_selected()
+    # accuracy_plv, f1score_plv = accuracy_partia('plv')
+    # df_sbpe = sbpe_partia('plv')
+    # df_mbpe = mbpe_partia('plv')
+    
+    # acc, f1 = accuracy_selected()
+    
+    data = accuracy_appendix()
