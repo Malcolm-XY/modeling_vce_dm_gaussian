@@ -474,7 +474,7 @@ def cnn_subnetworks_evaluation_circle_common(projection_params={"source": "auto"
             alpha = features['alpha']
             beta = features['beta']
             gamma = features['gamma']
-
+            
             # RCM
             alpha_rebuilded = spatial_gaussian_smoothing.fcs_filtering_common(alpha, 
                                                                               projection_params, filtering_params,
